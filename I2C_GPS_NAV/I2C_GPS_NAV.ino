@@ -178,7 +178,7 @@ void receiveEvent(int bytesReceived)
     //More than 1 byte was received, so there is definitely some data to write into a register
     //Check for writeable registers and discard data is it's not writeable
     
-    if ((receivedCommands[0]>=I2C_GPS_WP0) && (receivedCommands[0]<=I2C_GPS_WP15)) {    //Set a waypoint register
+    if ((receivedCommands[0]>=I2C_GPS_WP0) && (receivedCommands[0]<=REG_MAP_SIZE {    //Writeable registers above I2C_GPS_WP0
      ptr = (uint8_t *)&i2c_dataset+receivedCommands[0];
      for (int a = 1; a < bytesReceived; a++) { *ptr++ = receivedCommands[a]; }
     }
