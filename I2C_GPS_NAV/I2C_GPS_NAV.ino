@@ -74,6 +74,8 @@
 #define I2C_GPS_WP13                              0x83
 #define I2C_GPS_WP14                              0x8B
 #define I2C_GPS_WP15                              0x93
+#define I2C_GPS_WP_NAV_PAR1						  0x9B	//Waypoint navigation parameter 1
+		#define I2C_GPS_WP_NAV_PAR1_REACH_LIMIT	0x0F    //lover 4 bit, waypoint reached distance
 
 typedef struct {
   uint8_t    new_data:1;
@@ -102,6 +104,11 @@ typedef struct {
 } GPS_COORDINATES;
 
 typedef struct {
+  uint8_t   wp_reach_distance;		//If we are within this distance (in meters) then assumed that the waypoint is reached. Default value = 2m
+  uint8_t   reserved;				//reserved for future use
+} WP_NAV_PAR1;
+
+typedef struct {
   STATUS_REGISTER       status;            // 0x00  status register
   COMMAND_REGISTER      command;           // 0x01  command register
   uint8_t               res1;              // 0x02  reserved for future use
@@ -117,7 +124,7 @@ typedef struct {
   int16_t               direction;         // 0x11-0x12 direction to active coordinates (calculated)   
   GPS_COORDINATES       gps_loc;           // 0x13 current location (8 byte)
   GPS_COORDINATES       gps_wp[16];         // 16 waypoints, WP#0 is RTH position
-
+  WP_NAV_PAR1			wp_nav_par1;		//waypoint navigation parameter register 1
 } I2C_REGISTERS;
 
 
@@ -360,11 +367,14 @@ void setup() {
   uint8_t *ptr = (uint8_t *)&i2c_dataset;
   for (i=0;i<sizeof(i2c_dataset);i++) { *ptr = 0; ptr++;}
 
+  //Set up default parameters
+  i2c_dataset.wp_nav_par1.wp_reach_distance = 2;			//If we are within 2 meters, consider the waypoint reached
+  
+  
+  //Start I2C communication routines
   Wire.begin(I2C_ADDRESS);               // DO NOT FORGET TO COMPILE WITH 400KHz!!! else change TWBR Speed to 100khz on Host !!! Address 0x40 write 0x41 read
   Wire.onRequest(requestEvent);          // Set up event handlers
   Wire.onReceive(receiveEvent);
-
-  //Serial.println("Startup...");
 }
 
 void loop() {
@@ -387,6 +397,7 @@ void loop() {
         //Get distance and direction to _target location
         GPS_distance(_target.lat,_target.lon,i2c_dataset.gps_loc.lat,i2c_dataset.gps_loc.lon, &i2c_dataset.distance, &i2c_dataset.direction);
         i2c_dataset.status.new_data = 1;
+		if (i2c_dataset.distance <= i2c_dataset.wp_nav_par1.wp_reach_distance) {  i2c_dataset.status.wp_reached = 0; } //Set Waypoint reached flag
       }
     }
   } //While
@@ -419,6 +430,7 @@ void loop() {
           i2c_dataset.wp_reg.active_wp   = _command_wp;                       //Set active wp to the one from command reg.
           _target.lon = i2c_dataset.gps_wp[_command_wp].lon;
           _target.lat = i2c_dataset.gps_wp[_command_wp].lat;
+		  i2c_dataset.status.wp_reached = 0;								  //zero out wp_reached flag
           i2c_dataset.status.new_data = 0;                                    //invalidate current dataset
           break;
    } //ignore invalid command bytes (only one command bit could be set
