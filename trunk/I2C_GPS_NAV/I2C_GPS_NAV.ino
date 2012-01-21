@@ -178,7 +178,7 @@ void receiveEvent(int bytesReceived)
     //More than 1 byte was received, so there is definitely some data to write into a register
     //Check for writeable registers and discard data is it's not writeable
     
-    if ((receivedCommands[0]>=I2C_GPS_WP0) && (receivedCommands[0]<=REG_MAP_SIZE {    //Writeable registers above I2C_GPS_WP0
+    if ((receivedCommands[0]>=I2C_GPS_WP0) && (receivedCommands[0]<=REG_MAP_SIZE)) {    //Writeable registers above I2C_GPS_WP0
      ptr = (uint8_t *)&i2c_dataset+receivedCommands[0];
      for (int a = 1; a < bytesReceived; a++) { *ptr++ = receivedCommands[a]; }
     }
@@ -195,9 +195,9 @@ void receiveEvent(int bytesReceived)
    output: distance in meters, bearing in degrees
 */
 void GPS_distance(int32_t lat1, int32_t lon1, int32_t lat2, int32_t lon2, uint16_t* dist, int16_t* bearing) {
-  float dLat = ((lat2 - lat1));                                    // difference of latitude in 1/10 000 000 degrees
-  float dLon = ((lon2 - lon1)) * cos(lat1*(PI/180/10000000.0));      // difference of longitude in 1/10 000 000 degrees
-  *dist = 6372795 / 1000000.0 * PI/180*(sqrt(sq(dLat) + sq(dLon)));
+  float dLat = ((lat2 - lat1));                                    // difference of latitude in 1/100000 degrees
+  float dLon = ((lon2 - lon1)) * cos(lat1*(PI/180/100000.0));      // difference of longitude in 1/100000 degrees
+  *dist = 6372795 / 100000.0 * PI/180*(sqrt(sq(dLat) + sq(dLon)));
   if (lat1 != lat2)
     *bearing = 180/PI*(atan2(dLon,dLat));
   else
@@ -205,53 +205,28 @@ void GPS_distance(int32_t lat1, int32_t lon1, int32_t lat2, int32_t lon2, uint16
 }
 
 /* The latitude or longitude is coded this way in NMEA frames
-  dddmm.mmmm   coded as degrees + minutes + minute decimal
-  This function converts this format in a unique unsigned long where 1 degree = 10 000 000
-  I increased the precision here, even if we think that the gps is not precise enough, with 10e5 precision it has 76cm resolution
-  with 10e7 it's around 1 cm now. Increasing it further is irrelevant, since even 1cm resolution is unrealistic, however increased 
-  resolution also increased precision od the distance calculation.
+  dm.m   coded as degrees + minutes + minute decimal
+  Where:
+    - d can be 1 or more char long. generally: 2 char long for latitude, 3 char long for longitude
+    - m is always 2 char long
+    - m can be 1 or more char long
+  This function converts this format in a unique unsigned long where 1 degree = 100 000
 */
-
-#define DIGIT_TO_VAL(_x)	(_x - '0')
-uint32_t GPS_coord_to_degrees(char* s)
-{
-	char *p, *q;
-	uint8_t deg = 0, min = 0;
-	unsigned int frac_min = 0;
-
-	// scan for decimal point or end of field
-	for (p = s; isdigit(*p); p++)
-		;
-	q = s;
-
-	// convert degrees
-	while ((p - q) > 2) {
-		if (deg)
-			deg *= 10;
-		deg += DIGIT_TO_VAL(*q++);
-	}
-
-	// convert minutes
-	while (p > q) {
-		if (min)
-			min *= 10;
-		min += DIGIT_TO_VAL(*q++);
-	}
-
-	// convert fractional minutes
-	// expect up to four digits, result is in
-	// ten-thousandths of a minute
-	if (*p == '.') {
-		q = p + 1;
-		for (int i = 0; i < 4; i++) {
-			frac_min *= 10;
-			if (isdigit(*q))
-				frac_min += *q++ - '0';
-		}
-	}
-
-
-	return deg * 10000000UL + (min * 1000000UL + frac_min*100UL) / 6;
+uint32_t GPS_coord_to_degrees(char* s) {
+  char *p , *d = s;
+  uint32_t sec , m = 1000;
+  uint16_t min , dec = 0;
+  
+  if(!*s) return 0;
+  for(p=s; *p!=0; p++) {
+    if (d != s) { *p-='0'; dec+=*p*m; m/=10; }
+    if (*p == '.') d=p;
+  }
+  m=10000;
+  min = *--d-'0' + (*--d-'0')*10;
+  sec = (m*min+dec)/6;
+  while (d != s) { m*=10; *--d-='0'; sec+=*d*m; }
+  return sec ;
 }
 
 /* This is am expandable implementation of a GPS frame decoding
