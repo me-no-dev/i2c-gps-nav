@@ -74,9 +74,10 @@
 #define I2C_GPS_WP13                              0x83
 #define I2C_GPS_WP14                              0x8B
 #define I2C_GPS_WP15                              0x93
-#define I2C_GPS_WP_NAV_PAR1						  0x9B	//Waypoint navigation parameter 1
+#define I2C_GPS_WP_NAV_PAR1			   0x9B	//Waypoint navigation parameter 1
 		#define I2C_GPS_WP_NAV_PAR1_REACH_LIMIT	0x0F    //lover 4 bit, waypoint reached distance
-
+#define I2C_GPS_GROUND_COURSE			  0x9C  //GPS ground course (uint16_t)
+		
 typedef struct {
   uint8_t    new_data:1;
   uint8_t    gps2dfix:1;
@@ -125,6 +126,7 @@ typedef struct {
   GPS_COORDINATES       gps_loc;           // 0x13 current location (8 byte)
   GPS_COORDINATES       gps_wp[16];         // 16 waypoints, WP#0 is RTH position
   WP_NAV_PAR1			wp_nav_par1;		//waypoint navigation parameter register 1
+  uint16_t				ground_course;		// 0x9c GPS ground cource
 } I2C_REGISTERS;
 
 
@@ -301,6 +303,8 @@ bool GPS_newFrame(char c) {
                      {
                        case 7: i2c_dataset.ground_speed = (atof(string)*0.5144444)*10;      //convert to m/s*100
                                break; 
+					   case 8: i2c_dataset.ground_course = (atof(string)*10);				//Convert to degrees *10 (.1 precision)
+							   break;
                      }
                    
                    break;                   
