@@ -60,7 +60,7 @@
 #if defined(GPS) || defined(I2C_GPS)
 
 
-**************************************************************In every place where a #if defined(GPS) occurs, replace it with 
+**************************************************************At the end of MUltiWii.ino add i2c gps code
 
 
 .... mixTable();
@@ -69,6 +69,8 @@
 
 
   #if defined(I2C_GPS)
+
+  static uint8_t _i2c_gps_status;
 
   //Do not use i2c_writereg, since writing a register does not work if an i2c_stop command is issued at the end
   //Still investigating, however with separated i2c_repstart and i2c_write commands works... and did not caused i2c errors on a long term test.
