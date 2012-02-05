@@ -152,13 +152,7 @@ void requestEvent()
 //Handler for receiving data
 void receiveEvent(int bytesReceived)
 {
-
-    
-  
      uint8_t  *ptr;
-  
-//     Serial.println("R");
-  
      for (int a = 0; a < bytesReceived; a++) {
           if (a < MAX_SENT_BYTES) {
                receivedCommands[a] = Wire.read();
@@ -167,7 +161,7 @@ void receiveEvent(int bytesReceived)
           }
      }
 
-//     Serial.println(receivedCommands[0],HEX);
+    if (receivedCommands[0] == I2C_GPS_COMMAND) { new_command = receivedCommands[1]; return; }  //Just one byte, ignore all others
 
      if(bytesReceived == 1 && (receivedCommands[0] < REG_MAP_SIZE)) { return; }        //read command from a given register
      if(bytesReceived == 1 && (receivedCommands[0] >= REG_MAP_SIZE)){                  //Addressing over the reg_map fallback to first byte
@@ -182,8 +176,6 @@ void receiveEvent(int bytesReceived)
      ptr = (uint8_t *)&i2c_dataset+receivedCommands[0];
      for (int a = 1; a < bytesReceived; a++) { *ptr++ = receivedCommands[a]; }
     }
-    
-    if (receivedCommands[0] == I2C_GPS_COMMAND) { new_command = receivedCommands[1]; }  //Just one byte, ignore all others
 }
 
 
@@ -358,11 +350,13 @@ void loop() {
   static uint8_t _command_wp;
   static uint8_t _command;
   
-  //gps_data_parse();
+  static uint16_t _watchdog_timer = 0;
+  
+  //Get gps data and parse
   while (Serial.available()) {
     if (GPS_newFrame(Serial.read())) {
       if (i2c_dataset.status.gps2dfix == 1) {
-
+        //Set current target after fix, this is for safety
         if (GPS_fix_home == 0) {
           GPS_fix_home = 1;
           _target.lat = i2c_dataset.gps_loc.lat;
@@ -372,18 +366,37 @@ void loop() {
         //Get distance and direction to _target location
         GPS_distance(_target.lat,_target.lon,i2c_dataset.gps_loc.lat,i2c_dataset.gps_loc.lon, &i2c_dataset.distance, &i2c_dataset.direction);
         i2c_dataset.status.new_data = 1;
-		if (i2c_dataset.distance <= i2c_dataset.wp_nav_par1.wp_reach_distance) {  i2c_dataset.status.wp_reached = 0; } //Set Waypoint reached flag
+        _watchdog_timer = millis();      //reset watchdog time at each valid gps packet
+	if (i2c_dataset.distance <= i2c_dataset.wp_nav_par1.wp_reach_distance) {  i2c_dataset.status.wp_reached = 0; } //Set Waypoint reached flag
       }
     }
   } //While
   
   
+//check watchdog timer, after 1200ms without valid packet, assume that gps communication is lost.
+if (_watchdog_timer != 0)
+{  
+  if (_watchdog_timer+1200 < millis()) 
+     {
+       i2c_dataset.status.gps2dfix = 0;
+       i2c_dataset.status.numsats = 0;
+       i2c_dataset.gps_loc.lat = 0;
+       i2c_dataset.gps_loc.lon = 0;
+       i2c_dataset.distance = 0;
+       i2c_dataset.direction = 0;
+       _watchdog_timer = 0;
+       i2c_dataset.status.new_data = 1;
+     }
+}
+
   //Check for new incoming command on I2C
   if (new_command!=0) {
     _command = new_command;                                                   //save command byte for processing
     new_command = 0;                                                          //clear it
+
     _command_wp = (_command & 0xF0) >> 4;                                     //mask 4 MSB bits and shift down
     _command = _command & 0x0F;                                               //empty 4MSB bits
+
    switch (_command) {
      case I2C_GPS_COMMAND_POSHOLD:
           _target.lon = i2c_dataset.gps_loc.lon;
