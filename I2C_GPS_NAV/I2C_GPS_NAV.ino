@@ -303,7 +303,7 @@ bool GPS_newFrame(char c) {
                      {
                        case 7: i2c_dataset.ground_speed = (atof(string)*0.5144444)*10;      //convert to m/s*100
                                break; 
-					   case 8: i2c_dataset.ground_course = (atof(string)*10);				//Convert to degrees *10 (.1 precision)
+	               case 8: i2c_dataset.ground_course = (atof(string)*10);				//Convert to degrees *10 (.1 precision)
 							   break;
                      }
                    
@@ -354,7 +354,7 @@ void loop() {
   static uint8_t _command_wp;
   static uint8_t _command;
   
-  static uint16_t _watchdog_timer = 0;
+  static uint32_t _watchdog_timer = 0;
   
   //Get gps data and parse
   while (Serial.available()) {
