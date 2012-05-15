@@ -238,8 +238,12 @@ void GPS_reset_home_position() {
 void GPS_reset_nav() {
       GPS_angle[ROLL]  = 0;
       GPS_angle[PITCH] = 0;
+         nav_lat = 0;
+     nav_lon = 0;
   #if defined(I2C_GPS)
-   GPS_I2C_command(I2C_GPS_COMMAND_STOP_NAV,0);
+   nav_lat = 0;
+   nav_lon = 0;
+   //GPS_I2C_command(I2C_GPS_COMMAND_STOP_NAV,0);
   #else
       pi_poshold_lat.reset_I();
       pi_poshold_lon.reset_I();
