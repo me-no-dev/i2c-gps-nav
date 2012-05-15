@@ -805,28 +805,8 @@ void loop () {
       
     }
     #endif
-    
-    
-
-
-    
-    /*
- 
-      if (rcOptions[BOXGPSHOME]) {GPSModeHome = 1;}
-      else GPSModeHome = 0;
-      if (rcOptions[BOXGPSHOLD]) {
-        if (GPSModeHold == 0) {
-          GPSModeHold = 1;
-          GPS_latitude_hold = GPS_latitude;
-          GPS_longitude_hold = GPS_longitude;
-        }
-      } else {
-        GPSModeHold = 0;
-      }
- 
-     */
-
-    #endif
+  
+   #endif
     if (rcOptions[BOXPASSTHRU]) {passThruMode = 1;}
     else passThruMode = 0;
   } else { // not in rc loop
@@ -886,15 +866,14 @@ void loop () {
   #if GPS
     uint16_t GPS_dist;
     int16_t  GPS_dir;
-
-    debug2  =nav_lat;
-    debug3 = nav_lon;
-
+  
+      debug2 = GPS_angle[ROLL];
+      debug3 = GPS_angle[PITCH];
     // Check that we really need to navigate ?
     if ( (GPSModeHome == 0 && GPSModeHold == 0) || (GPS_fix_home == 0) ) {
       // If not. Reset nav loops and all nav related parameters
 
-      //GPS_reset_nav();
+      GPS_reset_nav();
 
     } else {
     
@@ -903,8 +882,7 @@ void loop () {
 
       GPS_angle[ROLL] = ((float)nav_lon*cos_yaw_x - (float)nav_lat*sin_yaw_y) /10;
       GPS_angle[PITCH]  = ((float)nav_lon*sin_yaw_y + (float)nav_lat*cos_yaw_x) /10;
-      debug2 = nav_lat;
-      debug3 = nav_lon;
+
       
       
       
