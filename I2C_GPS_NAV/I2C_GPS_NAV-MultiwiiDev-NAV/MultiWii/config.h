@@ -190,8 +190,8 @@
 
 
 /************************    Moving Average Gyros    **********************************/
-//#define MMGYRO                         // Active Moving Average Function for Gyros
-//#define MMGYROVECTORLENGHT 10          // Lenght of Moving Average Vector
+#define MMGYRO                         // Active Moving Average Function for Gyros
+#define MMGYROVECTORLENGHT 10          // Lenght of Moving Average Vector
 // Moving Average ServoGimbal Signal Output
 //#define MMSERVOGIMBAL                  // Active Output Moving Average Function for Servos Gimbal
 //#define MMSERVOGIMBALVECTORLENGHT 32   // Lenght of Moving Average Vector
@@ -207,7 +207,7 @@
    Select the right line depending on your radio brand. Feel free to modify the order in your PPM order is different */
 //#define SERIAL_SUM_PPM         PITCH,YAW,THROTTLE,ROLL,AUX1,AUX2,AUX3,AUX4 //For Graupner/Spektrum
 //#define SERIAL_SUM_PPM         ROLL,PITCH,THROTTLE,YAW,AUX1,AUX2,AUX3,AUX4 //For Robe/Hitec/Futaba
-//#define SERIAL_SUM_PPM         PITCH,ROLL,THROTTLE,YAW,AUX1,AUX2,AUX3,AUX4 //For some Hitec/Sanwa/Others
+#define SERIAL_SUM_PPM         PITCH,ROLL,THROTTLE,YAW,AUX1,AUX2,AUX3,AUX4 //For some Hitec/Sanwa/Others
 
 /**********************    Spektrum Satellite Reciver    *******************************/
 /* The following lines apply only for Spektrum Satellite Receiver
@@ -259,7 +259,7 @@
 
 /* this is the value for the ESCs when they are not armed
    in some cases, this value must be lowered down to 900 for some specific ESCs */
-#define MINCOMMAND 1000
+#define MINCOMMAND 900
 
 /* this is the maximum value for the ESCs at full power
    this value can be increased up to 2000 */

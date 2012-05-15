@@ -246,7 +246,7 @@ void getEstimatedAttitude(){
 //******************************************EOSBANDI  
     //add declination
     //Heading is -180 - 180 had to wrap up accordingly
-    heading = heading + MAG_DECLINIATION;
+    heading = heading + (MAG_DECLINIATION * 10);
 
 	heading = heading /10;					// /10 moved here from above
 	
