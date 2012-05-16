@@ -1,3 +1,4 @@
+
 // ************************************************************************************************************
 // LCD & display & monitoring
 // ************************************************************************************************************
@@ -85,7 +86,6 @@ prog_uchar LOGO[] PROGMEM = { // logo....
     0x7F, 0x7F, 0x40, 0x01, 0x03, 0x03, 0x00, 0x3F, 0x7F, 0x40, 0x40, 0x21, 0x7F, 0x7F, 0x40, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x40, 0x7F, 0x7F, 0x40, 0x01, 0x01, 0x43, 0x7F, 0x7F, 0x40, 0x00,
     0x06, 0x06, 0x06, 0x06, 0x00, 0x40, 0x7F, 0x7F, 0x41, 0x41, 0x41, 0x45, 0x7E, 0x3C, 0x00, 0x00
-
 };
 
 prog_uchar myFont[][6] PROGMEM = { // Refer to "Times New Roman" Font Database... 5 x 7 font
@@ -213,7 +213,6 @@ prog_uchar myFont[][6] PROGMEM = { // Refer to "Times New Roman" Font Database..
   { 0x30,0x48,0x45,0x40,0x20,0x00}, //   (121)  ? - 0x00BF Inverted Question Mark
 };
 
-
 void i2c_OLED_send_cmd(uint8_t command) {
   TWBR = ((16000000L / 400000L) - 16) / 2; // change the I2C clock rate
   i2c_writeReg(OLED_address, 0x80, (uint8_t)command);
@@ -225,23 +224,23 @@ void i2c_OLED_send_byte(uint8_t val) {
 }
 
 void  i2c_OLED_init(void){
-  i2c_OLED_send_cmd(0xae);    //display off
-  i2c_OLED_send_cmd(0xa4);          //SET All pixels OFF
+  i2c_OLED_send_cmd(0xae);            //display off
+  i2c_OLED_send_cmd(0xa4);            //SET All pixels OFF
 //  i2c_OLED_send_cmd(0xa5);            //SET ALL pixels ON
-  delay(50);
+  delay(10);
   i2c_OLED_send_cmd(0x20);            //Set Memory Addressing Mode
   i2c_OLED_send_cmd(0x02);            //Set Memory Addressing Mode to Page addressing mode(RESET)
-//  i2c_OLED_send_cmd(0xa0);      //colum address 0 mapped to SEG0 (POR)*** wires at bottom
-  i2c_OLED_send_cmd(0xa1);    //colum address 127 mapped to SEG0 (POR) ** wires at top of board
+//  i2c_OLED_send_cmd(0xa0);            //colum address 0 mapped to SEG0 (POR)*** wires at bottom
+  i2c_OLED_send_cmd(0xa1);            //colum address 127 mapped to SEG0 (POR) ** wires at top of board
 //  i2c_OLED_send_cmd(0xC0);            // Scan from Right to Left (POR)         *** wires at bottom
-  i2c_OLED_send_cmd(0xC8);          // Scan from Left to Right               ** wires at top
+  i2c_OLED_send_cmd(0xC8);            // Scan from Left to Right               ** wires at top
   i2c_OLED_send_cmd(0xa6);            // Set WHITE chars on BLACK backround
 //  i2c_OLED_send_cmd(0xa7);            // Set BLACK chars on WHITE backround
   i2c_OLED_send_cmd(0x81);            // Setup CONTRAST CONTROL, following byte is the contrast Value
   i2c_OLED_send_cmd(0xaf);            // contrast value between 1 ( == dull) to 256 ( == bright)
-  delay(20);
+  delay(10);
   i2c_OLED_send_cmd(0xaf);          //display on
-  delay(20);
+  delay(10);
 }
 
 void i2c_OLED_send_char(unsigned char ascii){
@@ -253,7 +252,7 @@ void i2c_OLED_send_char(unsigned char ascii){
   }
 }
 
-void i2c_OLED_send_string(const char *string){  // Sends a string of chars untill null terminator
+void i2c_OLED_send_string(const char *string){        // Sends a string of chars untill null terminator
   unsigned char i=0;
   while(*string){
     for(i=0;i<6;i++){
@@ -264,31 +263,31 @@ void i2c_OLED_send_string(const char *string){  // Sends a string of chars until
   }
 }
 
-#ifndef SUPPRESS_OLED_I2C_128x64LOGO       // Do we want the Logo displayed ?
+#ifndef SUPPRESS_OLED_I2C_128x64LOGO    // Do we want the Logo displayed ?
 void i2c_OLED_send_logo(void){
   unsigned char i,j;
   i2c_OLED_send_cmd(0xa6);              //Set Normal Display
-  i2c_OLED_send_cmd(0xae);      // Display OFF
+  i2c_OLED_send_cmd(0xae);              // Display OFF
   i2c_OLED_send_cmd(0x20);              // Set Memory Addressing Mode
   i2c_OLED_send_cmd(0x00);              // Set Memory Addressing Mode to Horizontal addressing mode
   i2c_OLED_send_cmd(0xb0);              // set page address to 0
   i2c_OLED_send_cmd(0X40);              // Display start line register to 0
   i2c_OLED_send_cmd(0);                 // Set low col address to 0
   i2c_OLED_send_cmd(0x10);              // Set high col address to 0
-  for(int i=0; i<1024; i++) {          // fill the display's RAM with graphic... 128*64 pixel picture
+  for(int i=0; i<1024; i++) {           // fill the display's RAM with graphic... 128*64 pixel picture
     buffer = pgm_read_byte(&(LOGO[i]));
     i2c_OLED_send_byte(buffer);
   }
-  i2c_OLED_send_cmd(0x81);             // Setup CONTRAST CONTROL, following byte is the contrast Value... always a 2 byte instruction
-  i2c_OLED_send_cmd(0x0);              // Set contrast value to 0
-  i2c_OLED_send_cmd(0xaf);           // display on
+  i2c_OLED_send_cmd(0x81);              // Setup CONTRAST CONTROL, following byte is the contrast Value... always a 2 byte instruction
+  i2c_OLED_send_cmd(0x1);               // Set contrast value to 1
+  i2c_OLED_send_cmd(0xaf);              // display on
   for(j=0; j<2; j++){
     for(i=0x01; i<0xff; i++){
-      i2c_OLED_send_cmd(0x81);         // Setup CONTRAST CONTROL, following byte is the contrast Value
-      i2c_OLED_send_cmd(i);            // Set contrast value
+      i2c_OLED_send_cmd(0x81);          // Setup CONTRAST CONTROL, following byte is the contrast Value
+      i2c_OLED_send_cmd(i);             // Set contrast value
       delay(1);
     }
-    for(i=0xff; i>0x01; i--){
+    for(i=0xff; i>=0x01; i--){
       i2c_OLED_send_cmd(0x81);         // Setup CONTRAST CONTROL, following byte is the contrast Value
       i2c_OLED_send_cmd(i);            // Set contrast value
       delay(1);
@@ -299,16 +298,16 @@ void i2c_OLED_send_logo(void){
 }
 #endif  // OLED_I2C_128x64
 
-void i2c_OLED_set_XY(byte col, byte row) {        //  Not used in MW V2.0 but its here anyway!
-  i2c_OLED_send_cmd(0xb0+row);                //set page address
-  i2c_OLED_send_cmd(0x00+(8*col&0x0f));       //set low col address
-  i2c_OLED_send_cmd(0x10+((8*col>>4)&0x0f));  //set high col address
+void i2c_OLED_set_XY(byte col, byte row) {    //  Not used in MW V2.0 but its here anyway!
+  i2c_OLED_send_cmd(0xb0+row);                //  set page address
+  i2c_OLED_send_cmd(0x00+(8*col&0x0f));       //  set low col address
+  i2c_OLED_send_cmd(0x10+((8*col>>4)&0x0f));  //  set high col address
 }
 
-void i2c_OLED_set_line(byte row) {   // goto the beginning of a single row, compattible with LCD_CONFIG
-  i2c_OLED_send_cmd(0xb0+row);   //set page address
-  i2c_OLED_send_cmd(0);          //set low col address
-  i2c_OLED_send_cmd(0x10);       //set high col address
+void i2c_OLED_set_line(byte row) {           // goto the beginning of a single row, compattible with LCD_CONFIG
+  i2c_OLED_send_cmd(0xb0+row);               //set page address
+  i2c_OLED_send_cmd(0);                      //set low col address
+  i2c_OLED_send_cmd(0x10);                   //set high col address
 }
 
 void i2c_clear_OLED(void){
@@ -579,7 +578,7 @@ void initLCD() {
   LCDclear();
 #endif
 #if defined(OLED_I2C_128x64)
-#if defined(NEW_OLED_FONT)&& !(defined(LCD_TELEMETRY))  // no need to diplay this, if LCD telemetry is enabled
+#if !(defined(LCD_TELEMETRY))  // no need to diplay this, if LCD telemetry is enabled
   //   optional instruction on the display......
   LCDsetLine(4); LCDprintChar("To ENTER CONFIG      ");// 21 characters on each line
   LCDsetLine(5); LCDprintChar("YAW RIGHT & PITCH FWD");
@@ -631,9 +630,9 @@ static lcd_type_desc_t LAUX4 = {&__uAuxFmt4, &__u16Inc};
 // ************************************************************************************************************
 // Descriptors
 static lcd_param_def_t __P = {&LTU8, 1, 1, 1};
-static lcd_param_def_t __I = {&LTU8, 3, 1, 2};
+static lcd_param_def_t __I = {&LTU8, 3, 1, 1};
 static lcd_param_def_t __D = {&LTU8, 0, 1, 1};
-static lcd_param_def_t __RC = {&LTU8, 2, 1, 2};
+static lcd_param_def_t __RC = {&LTU8, 2, 1, 1};
 static lcd_param_def_t __PM = {&LPMM, 1, 1, 0};
 static lcd_param_def_t __PS = {&LPMS, 1, 1, 0};
 static lcd_param_def_t __PT = {&LTU8, 0, 1, 1};
@@ -662,9 +661,9 @@ PROGMEM prog_char lcd_param_text10 [] = "Yaw      D";
 PROGMEM prog_char lcd_param_text11 [] = "Alt      P";
 PROGMEM prog_char lcd_param_text12 [] = "Alt      I";
 PROGMEM prog_char lcd_param_text13 [] = "Alt      D";
-PROGMEM prog_char lcd_param_text14 [] = "Vel      P";
-PROGMEM prog_char lcd_param_text15 [] = "Vel      I";
-PROGMEM prog_char lcd_param_text16 [] = "Vel      D";
+//PROGMEM prog_char lcd_param_text14 [] = "Vel      P";
+//PROGMEM prog_char lcd_param_text15 [] = "Vel      I";
+//PROGMEM prog_char lcd_param_text16 [] = "Vel      D";
 #endif
 PROGMEM prog_char lcd_param_text17 [] = "Level    P";
 PROGMEM prog_char lcd_param_text18 [] = "Level    I";
@@ -691,6 +690,18 @@ PROGMEM prog_char lcd_param_text31 [] = "pMeter  M6";
 PROGMEM prog_char lcd_param_text32 [] = "pMeter  M7";
 #endif //                                0123456789
 #endif
+
+#if GPS
+PROGMEM prog_char lcd_param_text80 [] = "GPS Pos. P";
+PROGMEM prog_char lcd_param_text81 [] = "GPS Pos. I";
+PROGMEM prog_char lcd_param_text82 [] = "Pos Rate P";
+PROGMEM prog_char lcd_param_text83 [] = "Pos Rate I";
+PROGMEM prog_char lcd_param_text84 [] = "Pos Rate D";
+PROGMEM prog_char lcd_param_text85 [] = "NAV Rate P";
+PROGMEM prog_char lcd_param_text86 [] = "NAV Rate I";
+PROGMEM prog_char lcd_param_text87 [] = "NAV Rate D";
+#endif
+
 #ifdef POWERMETER
 PROGMEM prog_char lcd_param_text33 [] = "pMeter Sum";
 PROGMEM prog_char lcd_param_text34 [] = "pAlarm /50"; // change text to represent PLEVELSCALE value
@@ -726,6 +737,9 @@ PROGMEM prog_char lcd_param_text52 [] = "AUX beeper";
 #endif
 //                                        0123456789.12345
 
+
+
+
 PROGMEM const prog_void *lcd_param_ptr_table [] = {
   &lcd_param_text01, &P8[ROLL], &__P,
   &lcd_param_text02, &P8[ROLL], &__P,
@@ -741,15 +755,16 @@ PROGMEM const prog_void *lcd_param_ptr_table [] = {
   &lcd_param_text11, &P8[PIDALT], &__P,
   &lcd_param_text12, &I8[PIDALT], &__I,
   &lcd_param_text13, &D8[PIDALT], &__D,
-  &lcd_param_text14, &P8[PIDVEL], &__P,
-  &lcd_param_text15, &I8[PIDVEL], &__I,
-  &lcd_param_text16, &D8[PIDVEL], &__D,
+
+//  &lcd_param_text14, &P8[PIDVEL], &__P,
+//  &lcd_param_text15, &I8[PIDVEL], &__I,
+//  &lcd_param_text16, &D8[PIDVEL], &__D,
 #endif
   &lcd_param_text17, &P8[PIDLEVEL], &__P,
   &lcd_param_text18, &I8[PIDLEVEL], &__I,
   &lcd_param_text188, &D8[PIDLEVEL], &__D,
 #if MAG
-  &lcd_param_text19, &P8[PIDMAG], &__P,
+  &lcd_param_text19, &P8[PIDMAG], &__P,  // X.X
 #endif
   &lcd_param_text20t, &thrMid8, &__RC,
   &lcd_param_text21t, &thrExpo8, &__RC,
@@ -758,6 +773,18 @@ PROGMEM const prog_void *lcd_param_ptr_table [] = {
   &lcd_param_text22, &rollPitchRate, &__RC,
   &lcd_param_text23, &yawRate, &__RC,
   &lcd_param_text24, &dynThrPID, &__RC,
+
+#if GPS
+ &lcd_param_text80, &P8[PIDPOS] , &__RC,
+ &lcd_param_text81, &I8[PIDPOS] , &__I,
+ &lcd_param_text82, &P8[PIDPOSR], &__P,
+ &lcd_param_text83, &I8[PIDPOSR], &__RC,   // I
+ &lcd_param_text84, &D8[PIDPOSR], &__I,
+ &lcd_param_text85, &P8[PIDNAVR], &__P,
+ &lcd_param_text86, &I8[PIDNAVR], &__RC,  // I
+ &lcd_param_text87, &D8[PIDNAVR], &__I,
+#endif
+
 #ifdef LCD_CONF_AUX
   #if ACC
     &lcd_param_text42, &activate[BOXACC], &__AUX1,
@@ -1089,10 +1116,15 @@ void configurationLoop() {
   delay(1500); // keep exit message visible for one and one half seconds even if (auto)telemetry continues writing in main loop
 #endif
 #if defined(OLED_I2C_128x64)
-  delay(2000); // wait for two seconds then clear screen and show initial message
+  delay(1000); // wait for two seconds then clear screen and show initial message
   cycleTime = 0;
   initLCD();
 #endif  
+#if defined(LCD_ETPP)
+  delay(1000); // wait for two seconds then clear screen and show initial message
+  cycleTime = 0;
+  initLCD();
+#endif
 }
 #endif // LCD_CONF
 // -------------------- telemetry output to LCD over serial/i2c ----------------------------------
@@ -1163,7 +1195,7 @@ void fill_line2_AmaxA() {
 }
 void fill_line1_VmA() {
   strcpy_P(line1,PSTR("--.-V   -----mAh")); // uint8_t vbat, intPowerMeterSum
-  // 0123456789.12345
+  //                   0123456789.12345
 #ifdef VBAT
   line1[0] = digit100(vbat);
   line1[1] = digit10(vbat);
@@ -1176,7 +1208,7 @@ void fill_line1_VmA() {
   line1[11] = digit10(intPowerMeterSum);
   line1[12] = digit1(intPowerMeterSum);
 #endif
-  if (buzzerState) { // buzzer on? then add some blink for attention
+  if (isBuzzerON()) { // buzzer on? then add some blink for attention
     line1[5] = '+'; line1[6] = '+'; line1[7] = '+';
   }
   // set mark, if we had i2c errors, failsafes or annex650 overruns
@@ -1467,11 +1499,13 @@ void lcd_telemetry() {
       case 0:// V, mAh
       LCDsetLine(1);
       fill_line1_VmA();
+      if (isBuzzerON()) { LCDattributesReverse(); } // buzzer on? then add some blink for attention
       LCDprintChar(line1);
       break;
       case 1:// V, mAh bars
       LCDsetLine(2);
       output_VmAbars();
+      LCDattributesOff(); // turn Reverse off for rest of display
       break;
       case 2:// A, maxA
       LCDsetLine(3);
