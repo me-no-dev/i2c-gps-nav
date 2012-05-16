@@ -89,7 +89,8 @@ void serialCom() {
               GPS_speed = read16();
               GPS_update = 1; break;
             case MSP_SET_PID:
-              for(i=0;i<PIDITEMS;i++) {P8[i]=read8();I8[i]=read8();D8[i]=read8();} break;
+              for(i=0;i<PIDITEMS;i++) {P8[i]=read8();I8[i]=read8();D8[i]=read8();} 
+              break;
             case MSP_SET_BOX:
               for(i=0;i<CHECKBOXITEMS;i++) {activate[i]=read16();} break;
             case MSP_SET_RC_TUNING:
