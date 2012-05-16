@@ -432,9 +432,6 @@ void annexCode() { // this code is excetuted at each loop and won't interfere wi
 
   serialCom();
   
-  debug3=get_free_memory();
-
-
   #if defined(POWERMETER)
     intPowerMeterSum = (pMeter[PMOTOR_SUM]/PLEVELDIV);
     intPowerTrigger1 = powerTrigger1 * PLEVELSCALE; 
@@ -538,8 +535,6 @@ void setup() {
     led_flasher_set_sequence(LED_FLASHER_SEQUENCE);
   #endif
   
-  //GPS_I2C_command(I2C_GPS_COMMAND_UPDATE_PIDS,0);
-  //GPS_I2C_command(I2C_GPS_COMMAND_UPDATE_PIDS,0);
 }
 
 // ******** Main Loop *********
