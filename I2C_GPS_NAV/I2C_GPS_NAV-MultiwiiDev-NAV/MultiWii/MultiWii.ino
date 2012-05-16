@@ -159,7 +159,7 @@ static uint16_t tri_yaw_middle = TRI_YAW_MIDDLE;
 // **********************
 // EEPROM & LCD functions
 // **********************
-static uint8_t P8[8], I8[8], D8[8]; // 8 bits is much faster and the code is much shorter
+static uint8_t P8[PIDITEMS], I8[PIDITEMS], D8[PIDITEMS]; // 8 bits is much faster and the code is much shorter
 static uint8_t dynP8[3], dynI8[3], dynD8[3];
 static uint8_t rollPitchRate;
 static uint8_t yawRate;
@@ -431,6 +431,9 @@ void annexCode() { // this code is excetuted at each loop and won't interfere wi
   }
 
   serialCom();
+  
+  debug3=get_free_memory();
+
 
   #if defined(POWERMETER)
     intPowerMeterSum = (pMeter[PMOTOR_SUM]/PLEVELDIV);
@@ -867,8 +870,8 @@ void loop () {
     uint16_t GPS_dist;
     int16_t  GPS_dir;
   
-      debug2 = GPS_angle[ROLL];
-      debug3 = GPS_angle[PITCH];
+      //debug2 = GPS_angle[ROLL];
+      //debug3 = GPS_angle[PITCH];
     // Check that we really need to navigate ?
     if ( (GPSModeHome == 0 && GPSModeHold == 0) || (GPS_fix_home == 0) ) {
       // If not. Reset nav loops and all nav related parameters
