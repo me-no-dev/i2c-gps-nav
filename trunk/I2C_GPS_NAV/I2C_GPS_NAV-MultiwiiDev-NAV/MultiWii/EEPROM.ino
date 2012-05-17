@@ -1,6 +1,6 @@
 #include <avr/eeprom.h>
 
-static uint8_t checkNewConf = 155;
+static uint8_t checkNewConf = 156;
 
 struct eep_entry_t{
   void *  var;
