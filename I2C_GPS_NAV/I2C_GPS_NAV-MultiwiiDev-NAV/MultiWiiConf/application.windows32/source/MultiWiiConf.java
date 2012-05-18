@@ -228,25 +228,22 @@ public void setup() {
     confI[i] = (controlP5.Numberbox) hideLabel(controlP5.addNumberbox("confI"+i,0,xParam+75,yParam+20+i*17,40,14));
     confI[i].setColorBackground(red_);confI[i].setMin(0);confI[i].setDirection(Controller.HORIZONTAL);confI[i].setDecimalPrecision(3);confI[i].setMultiplier(0.001f);confI[i].setMax(0.250f);
     confD[i] = (controlP5.Numberbox) hideLabel(controlP5.addNumberbox("confD"+i,0,xParam+120,yParam+20+i*17,30,14));
-    confD[i].setColorBackground(red_);confD[i].setMin(0);confD[i].setDirection(Controller.HORIZONTAL);confD[i].setDecimalPrecision(0);confD[i].setMultiplier(1);confD[i].setMax(100);}
+    confD[i].setColorBackground(red_);confD[i].setMin(0);confD[i].setDirection(Controller.HORIZONTAL);confD[i].setDecimalPrecision(0);confD[i].setMultiplier(1);confD[i].setMax(100);
+  }
  
   confI[8].hide();confD[8].hide();confD[4].hide();
   //change bounds for POS-4 POSR-5 and NAV-6
-  {
-  int i = 4;  
-  confP[i].setDecimalPrecision(2);confP[i].setMultiplier(0.01f);confP[i].setMax(5);
-  confI[i].setDecimalPrecision(1);confI[i].setMultiplier(0.1f);confI[i].setMax(2.5f);
+  confP[4].setDecimalPrecision(2);confP[4].setMultiplier(0.01f);confP[4].setMax(5);
+  confI[4].setDecimalPrecision(1);confI[4].setMultiplier(0.1f);confI[4].setMax(2.5f);
   
-  i = 5;
-  confP[i].setDecimalPrecision(1);confP[i].setMultiplier(0.1f);confP[i].setMax(25);
-  confI[i].setDecimalPrecision(2);confI[i].setMultiplier(0.01f);confI[i].setMax(2.5f);
-  confD[i].setDecimalPrecision(3);confD[i].setMultiplier(.001f);confD[i].setMax(.250f);
+  confP[5].setDecimalPrecision(1);confP[5].setMultiplier(0.1f);confP[5].setMax(25);
+  confI[5].setDecimalPrecision(2);confI[5].setMultiplier(0.01f);confI[5].setMax(2.5f);
+  confD[5].setDecimalPrecision(3);confD[5].setMultiplier(.001f);confD[5].setMax(.250f);
   
-  i = 6;
-  confP[i].setDecimalPrecision(1);confP[i].setMultiplier(0.1f);confP[i].setMax(25);
-  confI[i].setDecimalPrecision(2);confI[i].setMultiplier(0.01f);confI[i].setMax(2.5f);
-  confD[i].setDecimalPrecision(3);confD[i].setMultiplier(.001f);confD[i].setMax(.250f);
-  } 
+  confP[6].setDecimalPrecision(1);confP[6].setMultiplier(0.1f);confP[6].setMax(25);
+  confI[6].setDecimalPrecision(2);confI[6].setMultiplier(0.01f);confI[6].setMax(2.5f);
+  confD[6].setDecimalPrecision(3);confD[6].setMultiplier(.001f);confD[6].setMax(.250f);
+  
   
 
   rollPitchRate = (controlP5.Numberbox) hideLabel(controlP5.addNumberbox("rollPitchRate",0,xParam+160,yParam+30,30,14));rollPitchRate.setDecimalPrecision(2);rollPitchRate.setMultiplier(0.01f);
@@ -465,7 +462,8 @@ public void draw() {
       indTX=0;
       serialize8('$');serialize8('M');serialize8('<');serialize8(3*PIDITEMS);serialize8(MSP_SET_PID);
       checksum=0;
-      for(i=0;i<PIDITEMS;i++) {serialize8(byteP[i]);serialize8(byteI[i]);serialize8(byteD[i]);}
+      for(i=0;i<PIDITEMS;i++) {serialize8(byteP[i]);serialize8(byteI[i]);serialize8(byteD[i]);
+}
       serialize8(checksum);
       for(i=0;i<indTX;i++) {g_serial.write(PApplet.parseChar(outBuf_[i]));}
 
@@ -587,21 +585,33 @@ public void draw() {
                   byteP[i] = read8();byteI[i] = read8();byteD[i] = read8();
                   switch (i) {
                    case 0: 
+			confP[i].setValue(byteP[i]/10.0f);confI[i].setValue(byteI[i]/1000.0f);confD[i].setValue(byteD[i]);
+			break;
                    case 1:
+			confP[i].setValue(byteP[i]/10.0f);confI[i].setValue(byteI[i]/1000.0f);confD[i].setValue(byteD[i]);
+			break;
                    case 2:
+			confP[i].setValue(byteP[i]/10.0f);confI[i].setValue(byteI[i]/1000.0f);confD[i].setValue(byteD[i]);
+			break;
                    case 3:
+			confP[i].setValue(byteP[i]/10.0f);confI[i].setValue(byteI[i]/1000.0f);confD[i].setValue(byteD[i]);
+			break;
                    case 7:
+			confP[i].setValue(byteP[i]/10.0f);confI[i].setValue(byteI[i]/1000.0f);confD[i].setValue(byteD[i]);
+			break;
                    case 8:
                       confP[i].setValue(byteP[i]/10.0f);confI[i].setValue(byteI[i]/1000.0f);confD[i].setValue(byteD[i]);
-                   break;
+                      break;
                    //Different rates fot POS-4 POSR-5 NAVR-6
                    case 4:
                       confP[i].setValue(byteP[i]/100.0f);confI[i].setValue(byteI[i]/100.0f);confD[i].setValue(byteD[i]/1000.0f);
                       break;
                    case 5:
+                      confP[i].setValue(byteP[i]/10.0f);confI[i].setValue(byteI[i]/100.0f);confD[i].setValue(byteD[i]/1000.0f);
+                      break;                   
                    case 6:
                       confP[i].setValue(byteP[i]/10.0f);confI[i].setValue(byteI[i]/100.0f);confD[i].setValue(byteD[i]/1000.0f);
-                   break;                   
+                      break;                   
                   }
                   confP[i].setColorBackground(green_);
                   confI[i].setColorBackground(green_);
@@ -1190,7 +1200,7 @@ public void InitSerial(float portValue) {
   if (portValue < commListMax) {
     String portPos = Serial.list()[PApplet.parseInt(portValue)];
     txtlblWhichcom.setValue("COM = " + shortifyPortName(portPos, 8));
-    g_serial = new Serial(this, portPos, 115200);
+    g_serial = new Serial(this, portPos, 57600);
     init_com=1;
     buttonSTART.setColorBackground(green_);buttonSTOP.setColorBackground(green_);buttonREAD.setColorBackground(green_);
     buttonRESET.setColorBackground(green_);commListbox.setColorBackground(green_);

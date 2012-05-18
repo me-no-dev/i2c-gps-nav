@@ -778,11 +778,11 @@ PROGMEM const prog_void *lcd_param_ptr_table [] = {
  &lcd_param_text80, &P8[PIDPOS] , &__RC,
  &lcd_param_text81, &I8[PIDPOS] , &__I,
  &lcd_param_text82, &P8[PIDPOSR], &__P,
- &lcd_param_text83, &I8[PIDPOSR], &__RC,   // I
- &lcd_param_text84, &D8[PIDPOSR], &__I,
+ &lcd_param_text83, &I8[PIDPOSR], &__RC,   
+ &lcd_param_text84, &D8[PIDPOSR], &__RC,
  &lcd_param_text85, &P8[PIDNAVR], &__P,
- &lcd_param_text86, &I8[PIDNAVR], &__RC,  // I
- &lcd_param_text87, &D8[PIDNAVR], &__I,
+ &lcd_param_text86, &I8[PIDNAVR], &__RC, 
+ &lcd_param_text87, &D8[PIDNAVR], &__RC,
 #endif
 
 #ifdef LCD_CONF_AUX
