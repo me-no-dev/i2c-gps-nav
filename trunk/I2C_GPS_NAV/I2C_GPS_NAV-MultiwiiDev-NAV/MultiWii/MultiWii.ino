@@ -200,16 +200,16 @@ static float cos_yaw_x;
 #define POSHOLD_I			0.0
 #define POSHOLD_IMAX		20		// degrees
 
-#define POSHOLD_RATE_P		1.4			//
-#define POSHOLD_RATE_I		0.2			// Wind control
-#define POSHOLD_RATE_D		0.010			// try 2 or 3 for POSHOLD_RATE 1
+#define POSHOLD_RATE_P		2.0			//
+#define POSHOLD_RATE_I		0.08			// Wind control
+#define POSHOLD_RATE_D		0.045			// try 2 or 3 for POSHOLD_RATE 1
 #define POSHOLD_RATE_IMAX	20			// degrees
 //////////////////////////////////////////////////////////////////////////////
 // Navigation PID gains
 //
 #define NAV_P				1.4		//
 #define NAV_I				0.20		// Wind control
-#define NAV_D				0.006		//
+#define NAV_D				0.08		//
 #define NAV_IMAX			20		// degrees
 
 //Serial GPS variables
@@ -222,7 +222,7 @@ static float cos_yaw_x;
 #define RADX100                    0.000174532925  
 #define CROSSTRACK_GAIN            1
 #define NAV_SPEED_MIN              100    // cm/sec
-#define NAV_SPEED_MAX              400    // cm/sec
+#define NAV_SPEED_MAX              300    // cm/sec
 #define NAV_SLOW_NAV               true
 #define NAV_BANK_MAX 3000        //30deg max banking when navigating (just for security and testing)
 
@@ -458,7 +458,7 @@ void annexCode() { // this code is excetuted at each loop and won't interfere wi
   
   #if GPS
     static uint32_t GPSLEDTime;
-    if ( currentTime > GPSLEDTime && (GPS_fix_home == 1)) {
+    if ( currentTime > GPSLEDTime && (GPS_numSat >= 5)) {
       GPSLEDTime = currentTime + 150000;
       LEDPIN_TOGGLE;
     }

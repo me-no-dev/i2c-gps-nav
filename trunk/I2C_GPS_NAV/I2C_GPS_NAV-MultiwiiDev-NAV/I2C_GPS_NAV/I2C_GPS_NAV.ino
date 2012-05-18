@@ -332,8 +332,8 @@ static void GPS_calc_velocity( int32_t gps_latitude, int32_t gps_longitude){
 	x_actual_speed 	= (float)(gps_longitude - last_longitude) *  GPS_scaleLonDown * tmp;
 	y_actual_speed	= (float)(gps_latitude  - last_latitude)  * tmp;
 
-	x_actual_speed	= (x_actual_speed + x_speed_old * 3) / 4;
-	y_actual_speed	= (y_actual_speed + y_speed_old * 3) / 4;
+	x_actual_speed	= (x_actual_speed + x_speed_old) / 2;
+	y_actual_speed	= (y_actual_speed + y_speed_old) / 2;
 
 
 	x_speed_old 	= x_actual_speed;
@@ -374,18 +374,28 @@ static void GPS_calc_poshold(int x_error, int y_error)
 	x_rate_error	= x_target_speed - x_actual_speed;	                // calc the speed error
 
 	p				= pid_poshold_rate_lon.get_p(x_rate_error);
-	i				= pid_poshold_rate_lon.get_i(x_rate_error, dTnav);
-	d				= pid_poshold_rate_lon.get_d(x_rate_error, dTnav);
+	i				= pid_poshold_rate_lon.get_i(x_rate_error + x_error, dTnav);
+	d				= pid_poshold_rate_lon.get_d(x_error, dTnav);
+    d                               = constrain(d, -2000, 2000);
+    // get rid of noise
+    if(abs(x_actual_speed) < 50){
+       d = 0;
+    }
 	output			= p + i + d;
-        nav_lon			= constrain(output, -NAV_BANK_MAX, NAV_BANK_MAX); 		
+    nav_lon			= constrain(output, -NAV_BANK_MAX, NAV_BANK_MAX); 		
 
 	// North / South
 	y_target_speed 	= pi_poshold_lat.get_p(y_error);			// calculate desired speed from lat error
 	y_rate_error	= y_target_speed - y_actual_speed;
 
 	p				= pid_poshold_rate_lat.get_p(y_rate_error);
-	i				= pid_poshold_rate_lat.get_i(y_rate_error, dTnav);
-	d				= pid_poshold_rate_lat.get_d(y_rate_error, dTnav);
+	i				= pid_poshold_rate_lat.get_i(y_rate_error + y_error, dTnav);
+	d				= pid_poshold_rate_lat.get_d(y_error, dTnav);
+    d                               = constrain(d, -2000, 2000);
+    // get rid of noise
+    if(abs(y_actual_speed) < 50){
+        d = 0;
+    }
 	output			= p + i + d;
 	nav_lat			= constrain(output, -NAV_BANK_MAX, NAV_BANK_MAX); 
 

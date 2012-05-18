@@ -1177,7 +1177,7 @@ void InitSerial(float portValue) {
   if (portValue < commListMax) {
     String portPos = Serial.list()[int(portValue)];
     txtlblWhichcom.setValue("COM = " + shortifyPortName(portPos, 8));
-    g_serial = new Serial(this, portPos, 115200);
+    g_serial = new Serial(this, portPos, 57600);
     init_com=1;
     buttonSTART.setColorBackground(green_);buttonSTOP.setColorBackground(green_);buttonREAD.setColorBackground(green_);
     buttonRESET.setColorBackground(green_);commListbox.setColorBackground(green_);
