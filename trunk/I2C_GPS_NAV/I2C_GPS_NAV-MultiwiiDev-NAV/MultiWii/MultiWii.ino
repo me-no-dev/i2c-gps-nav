@@ -301,6 +301,8 @@ static int16_t waypoint_speed_gov;
 //
 
 #define GPS_FILTER_VECTOR_LENGTH 5
+#define LAT  0
+#define LON  1
 
 static uint8_t GPS_filter_index = 0;
 static int32_t GPS_filter[2][GPS_FILTER_VECTOR_LENGTH];
@@ -308,7 +310,8 @@ static int32_t GPS_filter_sum[2];
 static int32_t GPS_read[2];
 static int32_t GPS_filtered[2];
 static int32_t GPS_degree[2];    //the lat lon degree without any decimals (lat/10 000 000)
-
+static uint8_t axis;
+static uint16_t fraction3[2];
 
 #endif 
 
@@ -507,7 +510,8 @@ void setup() {
   BUZZERPIN_PINMODE;
   STABLEPIN_PINMODE;
   POWERPIN_OFF;
- 
+  delay(1000);          //Wait a sec before start init
+  blinkLED(2,20, 2);
   
   #if defined(ESC_CALIB_CANNOT_FLY) // <- to move in Output.pde, nothing to do here
     /* this turns into a special version of MultiWii. Its only purpose it to try and calib all attached ESCs */
@@ -542,6 +546,25 @@ void setup() {
   #endif
   #if defined(GPS_SERIAL)
     SerialOpen(GPS_SERIAL,GPS_BAUD);
+    //***************EOSBANDI quick hack to set the MTK gps to 10Hz.
+    //$PMTK220,100*2F<cr><lf>
+    SerialWrite(GPS_SERIAL,'$');
+    SerialWrite(GPS_SERIAL,'P');
+    SerialWrite(GPS_SERIAL,'M');
+    SerialWrite(GPS_SERIAL,'T');
+    SerialWrite(GPS_SERIAL,'K');
+    SerialWrite(GPS_SERIAL,'2');
+    SerialWrite(GPS_SERIAL,'2');
+    SerialWrite(GPS_SERIAL,'0');
+    SerialWrite(GPS_SERIAL,',');
+    SerialWrite(GPS_SERIAL,'1');
+    SerialWrite(GPS_SERIAL,'0');
+    SerialWrite(GPS_SERIAL,'0');
+    SerialWrite(GPS_SERIAL,'*');
+    SerialWrite(GPS_SERIAL,'2');
+    SerialWrite(GPS_SERIAL,'F');
+    SerialWrite(GPS_SERIAL,'\r');
+    SerialWrite(GPS_SERIAL,'\n');
   #endif
   #if defined(LCD_ETPP) || defined(LCD_LCD03) || defined(OLED_I2C_128x64)
     initLCD();

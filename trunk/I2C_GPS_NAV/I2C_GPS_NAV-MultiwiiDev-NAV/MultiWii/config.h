@@ -14,9 +14,9 @@
 /**************************    The type of multicopter    ****************************/
 //#define GIMBAL
 //#define BI
-//#define TRI
+#define TRI
 //#define QUADP
-#define QUADX
+//#define QUADX
 //#define Y4
 //#define Y6
 //#define HEX6
@@ -105,7 +105,7 @@
 //#define DROTEK_6DOF_MPU // Drotek 6DOF with MPU6050
 //#define MONGOOSE1_0     // mongoose 1.0    http://store.ckdevices.com/
 //#define CRIUS_LITE      // Crius MultiWii Lite
-#define CRIUS_SE        // Crius MultiWii SE
+//#define CRIUS_SE        // Crius MultiWii SE
 //#define OPENLRSv2MULTI  // OpenLRS v2 Multi Rc Receiver board including ITG3205 and ADXL345
 //#define BOARD_PROTO_1   // with MPU6050 + HMC5883L + MS baro
 //#define BOARD_PROTO_2   // with MPU6050 + slave  MAG3110 + MS baro
@@ -114,26 +114,26 @@
 /***************************    independent sensors    ********************************/
 //leave it commented if you already checked a specific board above
 /* I2C gyroscope */
-//#define ITG3200
+#define ITG3200
 //#define L3G4200D
 //#define MPU6050       //combo + ACC
 
 /* I2C accelerometer */
 //#define MMA745
 //#define ADXL345
-//#define BMA020
+#define BMA020
 //#define BMA180
 //#define NUNCHACK  // if you want to use the nunckuk as a standalone I2C ACC without WMP
 //#define LIS3LV02
 //#define LSM303DLx_ACC
 
 /* I2C barometer */
-//#define BMP085
+#define BMP085
 //#define MS561101BA
 
 /* I2C magnetometer */
 //#define HMC5843
-//#define HMC5883
+#define HMC5883
 //#define AK8975
 //#define MAG3110
 
@@ -291,7 +291,7 @@
 
 
 /**************************    rc option-change beep    *******************************/
-//#define RCOPTIONSBEEP        //uncomment this if you want the buzzer to beep at any rcOptions change on channel Aux1 to Aux4
+#define RCOPTIONSBEEP        //uncomment this if you want the buzzer to beep at any rcOptions change on channel Aux1 to Aux4
 
 /**************************    Disable WMP power pin     *******************************/
 /* disable use of the POWER PIN */
@@ -367,14 +367,14 @@
    note: only the RX PIN is used, the GPS is not configured by multiwii
    the GPS must be configured to output NMEA sentences (which is generally the default conf for most GPS devices)
    uncomment the first line to select the GPS serial port of the arduino */
-//#define GPS_SERIAL 2 // should be 2 for flyduino v2. It's the serial port number on arduino MEGA
+#define GPS_SERIAL 2 // should be 2 for flyduino v2. It's the serial port number on arduino MEGA
 #define GPS_BAUD   115200
 
 /* I2C GPS device made with an independant arduino + GPS device
    including some navigation functions
    contribution from EOSBandi
    http://code.google.com/p/i2c-gps-nav/ */
-#define I2C_GPS
+//#define I2C_GPS
 
 /* GPS data readed from Misio-OSD  ( EXPERIMENTAL )
    If we have Misio-OSD with GPS module connected to OSD we can use this GPS for navigation purpose. 
@@ -716,6 +716,11 @@
 //#define GYRO_ORIENTATION(X, Y, Z) {gyroADC[ROLL] = -Y; gyroADC[PITCH] =  X; gyroADC[YAW] = Z;}
 //#define MAG_ORIENTATION(X, Y, Z)  {magADC[ROLL]  = X; magADC[PITCH]  = Y; magADC[YAW]  = Z;}
 
+/* ORIENTATION for my devTri
+//#define ACC_ORIENTATION(X, Y, Z)  {accADC[ROLL]  =  -X; accADC[PITCH]  = -Y; accADC[YAW]  = Z;}
+#define GYRO_ORIENTATION(X, Y, Z) {gyroADC[ROLL] = Y; gyroADC[PITCH] =  -X; gyroADC[YAW] = -Z;}
+#define MAG_ORIENTATION(X, Y, Z)  {magADC[ROLL]  = Y; magADC[PITCH]  = -X; magADC[YAW]  = -Z;}
+*/
  
 /* frequenies for rare cyclic actions in the main loop, depend on cycle time! */
 /* time base is main loop cycle time - a value of 6 means to trigger the action every 6th run through the main loop */
