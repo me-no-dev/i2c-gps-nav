@@ -79,6 +79,7 @@ static uint8_t  buzzerState = 0;
 static uint8_t  toggleBeep = 0;
 static int16_t  debug1,debug2,debug3,debug4;
 static int16_t  sonarAlt; //to think about the unit
+static uint8_t  i2c_init_done = 0;          // For i2c gps we have to now when i2c init is done, so we can update parameters to the i2cgps from eeprom (at startup it is done in setup())
 
 //for log
 static uint16_t cycleTimeMax = 0;       // highest ever cycle timen
@@ -212,8 +213,10 @@ static float cos_yaw_x;
 #define NAV_D				0.08		//
 #define NAV_IMAX			20		// degrees
 
-//Serial GPS variables
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Serial GPS only variables
 #if defined(GPS_SERIAL)
+
  //navigation mode
 #define NAV_MODE_NONE              0
 #define NAV_MODE_POSHOLD           1
@@ -243,6 +246,8 @@ AC_PID	pid_nav_lon(NAV_P,NAV_I,NAV_D,NAV_IMAX * 100);
 static uint32_t         nav_loopTimer;
 // Delta Time in milliseconds for navigation computations, updated with every good GPS read
 static float 			dTnav;
+
+static int16_t GPS_wp_radius    = GPS_WP_RADIUS;
 
 static int8_t  nav_mode = NAV_MODE_NONE;            //Navigation mode
 
@@ -290,6 +295,20 @@ static int32_t	wp_distance;
 
 // used for slow speed wind up when start navigation;
 static int16_t waypoint_speed_gov;
+
+////////////////////////////////////////////////////////////////////////////////////
+// moving average filter variables
+//
+
+#define GPS_FILTER_VECTOR_LENGTH 5
+
+static uint8_t GPS_filter_index = 0;
+static int32_t GPS_filter[2][GPS_FILTER_VECTOR_LENGTH];
+static int32_t GPS_filter_sum[2];
+static int32_t GPS_read[2];
+static int32_t GPS_filtered[2];
+static int32_t GPS_degree[2];    //the lat lon degree without any decimals (lat/10 000 000)
+
 
 #endif 
 
@@ -488,6 +507,8 @@ void setup() {
   BUZZERPIN_PINMODE;
   STABLEPIN_PINMODE;
   POWERPIN_OFF;
+ 
+  
   #if defined(ESC_CALIB_CANNOT_FLY) // <- to move in Output.pde, nothing to do here
     /* this turns into a special version of MultiWii. Its only purpose it to try and calib all attached ESCs */
     writeAllMotors(ESC_CALIB_HIGH);
@@ -508,6 +529,8 @@ void setup() {
     initOpenLRS();
   #endif
   initSensors();
+  GPS_set_pids();
+  
   previousTime = micros();
   #if defined(GIMBAL)
    calibratingA = 400;

@@ -46,11 +46,11 @@
 
 /***************************    Internal i2c Pullups   ********************************/
 //enable internal I2C pull ups
-#define INTERNAL_I2C_PULLUPS
+//#define INTERNAL_I2C_PULLUPS
 
 /*****************************    Serial com speed    *********************************/
 /* This is the speed of the serial interface. 115200 kbit/s is the best option for a USB connection.*/
-#define SERIAL_COM_SPEED 115200
+#define SERIAL_COM_SPEED 57600
 
 
 
@@ -162,8 +162,8 @@
    IMPORTANT! Change low pass filter setting changes PID behaviour, so retune your PID's after changing LPF.*/
 //#define ITG3200_LPF_256HZ     // This is the default setting, no need to uncomment, just for reference
 //#define ITG3200_LPF_188HZ
-#define ITG3200_LPF_98HZ
-//#define ITG3200_LPF_42HZ
+//#define ITG3200_LPF_98HZ
+#define ITG3200_LPF_42HZ
 //#define ITG3200_LPF_20HZ
 //#define ITG3200_LPF_10HZ      // Use this only in extreme cases, rather change motors and/or props
 
@@ -385,15 +385,17 @@
 /* GPS navigation can control the heading */
 
 #define NAV_CONTROLS_HEADING       true      // copter faces toward the navigation point, maghold must be enabled for it
-#define NAV_TAIL_FIRST             false      // true - copter comes in with tail first 
+#define NAV_TAIL_FIRST             false     // true - copter comes in with tail first 
 #define NAV_SET_TAKEOFF_HEADING    true      // true - when copter arrives to home position it rotates it's head to takeoff direction
 
-#define MAG_DECLINIATION  3.96f          //For Budapest Hungary.
+#define MAG_DECLINIATION  3.96f              //For Budapest Hungary.
 //Get your magnetic decliniation from here : http://magnetic-declination.com/
 //Convert the degree+minutes into decimal degree by ==> degree+minutes*(1/60)
 //Note the sign on declination it could be negative or positive (WEST or EAST)
 
-
+#define GPS_FILTERING              true      // add a 5 element moving average filter to GPS coordinates, helps eliminate gps noise but adds latency
+#define GPS_LOW_SPEED_D_FILTER     true      // below .5m/s speed ignore D term for POSHOLD_RATE, theoretically this also removed D term induced noise
+#define GPS_WP_RADIUS              200       // if we are within this distance to a waypoint then we consider it reached (distance is in cm)
 
 /* Pseudo-derivative conrtroller for level mode (experimental)
    Additional information: http://www.multiwii.com/forum/viewtopic.php?f=8&t=503 */
@@ -401,7 +403,7 @@
 
 /* introduce a deadband around the stick center
    Must be greater than zero, comment if you dont want a deadband on roll, pitch and yaw */
-//#define DEADBAND 6
+#define DEADBAND 6
 
 /* interleaving delay in micro seconds between 2 readings WMP/NK in a WMP+NK config
    if the ACC calibration time is very long (20 or 30s), try to increase this delay up to 4000
@@ -432,7 +434,7 @@
 
 /*****************************   The type of LCD     **********************************/
 /* choice of LCD attached for configuration and telemetry, see notes below */
-#define LCD_SERIAL3W    // Alex' initial variant with 3 wires, using rx-pin for transmission @9600 baud fixed
+//#define LCD_SERIAL3W    // Alex' initial variant with 3 wires, using rx-pin for transmission @9600 baud fixed
 /* serial (wired or wireless via BT etc.) */
 //#define LCD_TEXTSTAR    // Cat's Whisker LCD_TEXTSTAR Module CW-LCD-02 (Which has 4 input keys for selecting menus)
 //#define LCD_VT100       // vt100 compatible terminal emulation (blueterm, putty, etc.)

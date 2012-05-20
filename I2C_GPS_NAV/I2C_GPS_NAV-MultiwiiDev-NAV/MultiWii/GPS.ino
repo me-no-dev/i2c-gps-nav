@@ -78,17 +78,20 @@ void GPS_NewData() {
           *varptr++ = i2c_readAck();
           *varptr++ = i2c_readAck();
           *varptr   = i2c_readAck();
-          
-          varptr = (uint8_t *)&nav_lat;		// for OSD longitude displaying
+
+          varptr = (uint8_t *)&nav_lat;		 
           *varptr++ = i2c_readAck();
           *varptr++ = i2c_readAck();
           
-          varptr = (uint8_t *)&nav_lon;		// for OSD longitude displaying
+          varptr = (uint8_t *)&nav_lon;		 
           *varptr++ = i2c_readAck();
           *varptr++ = i2c_readNak();
-
+          
+          debug1=nav_lat;
+          debug2=nav_lon;
+          
           i2c_rep_start(I2C_GPS_ADDRESS);
-          i2c_write(I2C_GPS_GROUND_SPEED);          //Start read from here 2x2 bytes speed and altitude
+          i2c_write(I2C_GPS_GROUND_SPEED);          
           i2c_rep_start(I2C_GPS_ADDRESS+1);
 
           varptr = (uint8_t *)&GPS_speed;			// speed in cm/s for OSD
@@ -103,10 +106,10 @@ void GPS_NewData() {
           varptr = (uint8_t *)&GPS_ground_course;
           *varptr++ = i2c_readAck();
           *varptr   = i2c_readNak();
-          
+
           //Adjust heading when navigating
           if (GPSModeHome == 1)
-          {  if (_i2c_gps_status & I2C_GPS_STATUS_WP_REACHED == 0)
+          {  if ( !(_i2c_gps_status & I2C_GPS_STATUS_WP_REACHED) )
               {
           	//Tail control	
                 if (NAV_CONTROLS_HEADING) {
@@ -137,11 +140,8 @@ void GPS_NewData() {
      if (GPS_newFrame(SerialRead(GPS_SERIAL))) {
 
        if (GPS_update == 1) GPS_update = 0; else GPS_update = 1;
-       
         if (GPS_fix == 1 && GPS_numSat >= 5) {
-
           if (armed == 0) {GPS_fix_home = 0;}
-          
           if (GPS_fix_home == 0 && armed) {
             GPS_fix_home = 1;
             GPS_latitude_home  = GPS_latitude;
@@ -149,14 +149,39 @@ void GPS_NewData() {
             GPS_calc_longitude_scaling(GPS_latitude);  //need an initial value for distance and bearing calc
             nav_takeoff_bearing = heading;             //save takeoff heading
           }
-          
 
+          //Apply moving average filter to GPS data
+    #if defined(GPS_FILTERING)
+         //latest unfiltered data is in GPS_latitude and GPS_longitude
+         GPS_read[LAT] = GPS_latitude;
+         GPS_read[LON] = GPS_longitude;
+         GPS_filter_index = ++GPS_filter_index % GPS_FILTER_VECTOR_LENGTH;
+         
+         for (axis = 0; axis< 2; axis++) {
+         GPS_degree[axis] = GPS_read[axis] / 10000000;  // get the degree to assure the sum fits to the int32_t
+  
+         // How close we are to a degree line ? its the first three digits from the fractions of degree
+         // later we use it to Check if we are close to a degree line, if yes, disable averaging,
+         fraction3[axis] = (GPS_read[axis]- GPS_degree[axis]*10000000) / 10000;
+  
+         GPS_filter_sum[axis] -= GPS_filter[axis][GPS_filter_index];
+         GPS_filter[axis][GPS_filter_index] = GPS_read[axis] - (GPS_degree[axis]*10000000); 
+         GPS_filter_sum[axis] += GPS_filter[axis][GPS_filter_index];
+         GPS_filtered[axis] = GPS_filter_sum[axis] / GPS_FILTER_VECTOR_LENGTH + (GPS_degree[axis]*10000000);
+         }       
+         
+         if ( nav_mode == NAV_MODE_POSHOLD) {      //we use gps averaging only in poshold mode...
+             if ( fraction3[LAT]>1 && fraction3[LAT]<999 ) GPS_latitude = GPS_filtered[LAT];
+             if ( fraction3[LON]>1 && fraction3[LON]<999 ) GPS_longitude = GPS_filtered[LON];
+         } 
+    
+    #endif
           //dTnav calculation
           //Time for calculating x,y speed and navigation pids
-	   dTnav = (float)(millis() - nav_loopTimer)/ 1000.0;
-	   nav_loopTimer = millis();
-           // prevent runup from bad GPS
-	   dTnav = min(dTnav, 1.0);  
+	  dTnav = (float)(millis() - nav_loopTimer)/ 1000.0;
+	  nav_loopTimer = millis();
+          // prevent runup from bad GPS
+	  dTnav = min(dTnav, 1.0);  
 
           //calculate distance and bearings for gui and other stuff continously
           GPS_distanceToHome = GPS_distance_cm(GPS_latitude,GPS_longitude,GPS_latitude_home,GPS_longitude_home) / 100;
@@ -165,25 +190,25 @@ void GPS_NewData() {
           //calculate the current velocity based on gps coordinates continously to get a valid speed at the moment when we start navigating
           GPS_calc_velocity(GPS_latitude,GPS_longitude);        
           
-          if (GPSModeHold == 1 || GPSModeHome == 1){    //ok we are navigating set the WP coordinates accordingly
+          if (GPSModeHold == 1 || GPSModeHome == 1){    //ok we are navigating 
 
-             //do gps nav calculations here   
+             //do gps nav calculations here, these are common for nav and poshold  
              wp_distance = GPS_distance_cm(GPS_latitude,GPS_longitude,GPS_WP_latitude,GPS_WP_longitude);
              target_bearing = GPS_bearing(GPS_latitude,GPS_longitude,GPS_WP_latitude,GPS_WP_longitude);
-             //GPS_calc_velocity(GPS_latitude,GPS_longitude);        
              GPS_calc_location_error(GPS_WP_latitude,GPS_WP_longitude,GPS_latitude,GPS_longitude);
 
              switch (nav_mode) {
               case NAV_MODE_POSHOLD: 
                 //Desired output is in nav_lat and nav_lon where 1deg inclination is 100 
-				GPS_calc_poshold(long_error, lat_error);
+		GPS_calc_poshold(long_error, lat_error);
                 break;
               case NAV_MODE_WP:
-				int16_t speed = GPS_calc_desired_speed(NAV_SPEED_MAX, NAV_SLOW_NAV);      //slow navigation 
-				// use error as the desired rate towards the target
-				GPS_calc_nav_rate(speed);
-
-				//Tail control	
+		int16_t speed = GPS_calc_desired_speed(NAV_SPEED_MAX, NAV_SLOW_NAV);      //slow navigation 
+		// use error as the desired rate towards the target
+                //Desired output is in nav_lat and nav_lon where 1deg inclination is 100 
+		GPS_calc_nav_rate(speed);
+	
+    	        //Tail control	
                 if (NAV_CONTROLS_HEADING) {
                   if (NAV_TAIL_FIRST) {
                       magHold = wrap_18000(nav_bearing-18000)/100;
@@ -192,10 +217,10 @@ void GPS_NewData() {
                   }
                 }
                 // Are we there yet ?(within 2 meters of the destination)
-				if ((wp_distance <= 200) || check_missed_wp()){         //if yes switch to poshold mode
-                     nav_mode = NAV_MODE_POSHOLD;
-                     if (NAV_SET_TAKEOFF_HEADING) { magHold = nav_takeoff_bearing; }
-                   } 
+		if ((wp_distance <= GPS_wp_radius) || check_missed_wp()){         //if yes switch to poshold mode
+                  nav_mode = NAV_MODE_POSHOLD;
+                  if (NAV_SET_TAKEOFF_HEADING) { magHold = nav_takeoff_bearing; }
+                } 
               break;               
              }
         } //end of gps calcs  
@@ -298,10 +323,24 @@ void GPS_set_pids() {
              i2c_write(D8[PIDNAVR]);
           
           GPS_I2C_command(I2C_GPS_COMMAND_UPDATE_PIDS,0);
+          
+          uint8_t nav_flags = 0;
+          if (GPS_FILTERING)          nav_flags += I2C_NAV_FLAG_GPS_FILTER;
+          if (GPS_LOW_SPEED_D_FILTER) nav_flags += I2C_NAV_FLAG_LOW_SPEED_D_FILTER; 
+          
+          i2c_rep_start(I2C_GPS_ADDRESS);
+            i2c_write(I2C_GPS_NAV_FLAGS);
+            i2c_write(nav_flags);
+            
+          i2c_rep_start(I2C_GPS_ADDRESS);
+            i2c_write(I2C_GPS_WP_RADIUS);
+            i2c_write(GPS_WP_RADIUS & 0x00FF); // lower eight bit   
+            i2c_write(GPS_WP_RADIUS >> 8); // upper eight bit
+          
+            
+             
+          
 #endif
-
-  
-  
   
 }
 
@@ -374,10 +413,6 @@ int32_t GPS_bearing(int32_t lat1, int32_t lon1, int32_t lat2, int32_t lon2)
         float off_x = (float)lon2 - lon1;
         float off_y = ((float)(lat2 - lat1)) * GPS_scaleLonUp;
 	float bearing =	9000.0f + atan2(-off_y, off_x) * 5729.57795f;      //Convert the output redians to 100xdeg
-
-        //float dLat = (lat2 - lat1);                                    // difference of latitude in 1/10 000 000 degrees
-        //float dLon = (lon2 - lon1) * GPS_scaleLonDown;
-        //int32_t bearing = 180/PI*(atan2(dLon,dLat)) * 100;
 
         if (bearing < 0) bearing += 36000;
 	return bearing;
@@ -460,9 +495,11 @@ static void GPS_calc_poshold(int x_error, int y_error)
 	d				= pid_poshold_rate_lon.get_d(x_error, dTnav);
         d                               = constrain(d, -2000, 2000);
         // get rid of noise
+#if defined(GPS_LOW_SPEED_D_FILTER)
         if(abs(x_actual_speed) < 50){
           d = 0;
         }
+#endif
 	output			= p + i + d;
 	
         nav_lon			= constrain(output, -NAV_BANK_MAX, NAV_BANK_MAX); 		
@@ -476,9 +513,11 @@ static void GPS_calc_poshold(int x_error, int y_error)
 	d				= pid_poshold_rate_lat.get_d(y_error, dTnav);
         d                               = constrain(d, -2000, 2000);
         // get rid of noise
+#if defined(GPS_LOW_SPEED_D_FILTER)
         if(abs(y_actual_speed) < 50){
           d = 0;
         }
+#endif
 	output			= p + i + d;
 	nav_lat			= constrain(output, -NAV_BANK_MAX, NAV_BANK_MAX); 
 
