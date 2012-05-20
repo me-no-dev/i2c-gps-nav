@@ -1,14 +1,18 @@
-/*********************************************
+/*******************************************************************************************************************************
  * I2CGPS  - Inteligent GPS and NAV module for MultiWii by EOSBandi
  * V2.0   
  *
- * This module is based on the idea about offloading GPS parsing and calculations from a low powered flight controller processor (AtMega328) 
- * and make all data available via the I2C bus.
- *
+ * This program implements position hold and navigational functions for MultiWii by offloading caclulations and gps parsing 
+ * into a secondary arduino processor connected to the MultiWii via i2c.
+ * Once activated it outputs desired banking in a lat/lon coordinate system, which can be easily rotated into the copter's frame of reference.
  * Need an updated version of Wire library, since current one does not handle repeated start in slave mode.
- *  
+ * also uses PI and PID libraries from the Arduplane team
  *
- *
+ * Navigation and Position hold routines and PI/PID libraries are based on code and ideas from the Arducopter team:
+ * Jason Short,Randy Mackay, Pat Hickey, Jose Julio, Jani Hirvinen
+ * Andrew Tridgell, Justin Beech, Adam Rivera, Jean-Louis Naudin, Roberto Navoni
+ * Status blink code from Guru_florida
+ * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
@@ -17,7 +21,7 @@
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
-*********************************************************************************/
+***********************************************************************************************************************************/
 
 #define VERSION 20                                                         //Software version for cross checking
 
@@ -26,12 +30,15 @@
 #include <AC_PID.h>
 #include <APM_PI.h>
 
+
 #include "registers.h"                                                    //Register definitions
 #include "config.h"
 
-
 #define REG_MAP_SIZE       sizeof(i2c_dataset)       //size of register map
 #define MAX_SENT_BYTES     0x0C                      //maximum amount of data that I could receive from a master device (register, plus 11 byte waypoint data)
+
+#define LAT  0
+#define LON  1
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // Which command I got from the host ? in GPSMode variable
@@ -47,7 +54,6 @@
 #define RADX100                    0.000174532925  
 //Blink feedback, by guru_florida
 #define BLINK_INTERVAL  90
-
 
 typedef struct {
   uint8_t    new_data:1;
@@ -84,49 +90,50 @@ typedef struct {
 //Status and command registers
   STATUS_REGISTER       status;                   // 0x00  status register
   COMMAND_REGISTER      command;                  // 0x01  command register
-  WAYPOINT_REGISTER     wp_register;              // 0x02  waypoint register (current, pervius)
+  WAYPOINT_REGISTER     wp_register;              // 0x02  waypoint register (current, previus)
   uint8_t               sw_version;               // 0x03  Version of the I2C_GPS sw
   uint8_t               res3;                     // 0x04  reserved for future use
   uint8_t               res4;                     // 0x05  reserved for future use
   uint8_t    	 	res5;                     // 0x06  reserved for future use
 
 //GPS & navigation data
-  GPS_COORDINATES       gps_loc;                  // current location (8 byte)
+  GPS_COORDINATES       gps_loc;                  // current location (8 byte) lat,lon
   int16_t	        nav_lat;                  // The desired bank towards North (Positive) or South (Negative)      1 deg = 100 max 30deg (3000)
   int16_t	        nav_lon;                  // The desired bank towards East (Positive) or West (Negative)        1 deg = 100 max 30deg (3000)
   uint32_t              wp_distance;              // distance to active coordinates  (calculated) in cm
   int16_t               wp_target_bearing;        // direction to active coordinates (calculated)   1deg = 10 / -1800 - 1800
-  int16_t               nav_bearing;              // crosstrack corrected navigational bearing
-  int16_t               home_to_copter_bearing;   //
-  int16_t               distance_to_home;         // cm
+  int16_t               nav_bearing;              // crosstrack corrected navigational bearing 1deg = 10
+  int16_t               home_to_copter_bearing;   // 1deg = 10
+  uint16_t              distance_to_home;         // distance to home in cm
   uint16_t              ground_speed;             // ground speed from gps m/s*100
   int16_t               altitude;                 // gps altitude
   uint16_t	        ground_course;	          // GPS ground course
-  uint16_t              res6;              // bearing from GPS
+  uint16_t              res6;                     // reserved for future use
   uint32_t		time;	                  // UTC Time from GPS
   
 //Parameters
-  uint8_t		nav_crosstrack_gain;      // 0x07  Crosstrack gain *100 (1 - 0.01 , 100 - 1)
-  uint8_t		nav_speed_min;		  // 0x08  minimum speed for navigation cm/s
-  uint16_t		nav_speed_max;		  // 0x09 - 0x0a maxiumum speed for navigation cm/s
-  uint16_t		nav_bank_max;		  // 0x0b - 0x0c maximum banking 1deg = 100, 30deg = 3000
-  uint16_t		wp_radius;		  // 0x0d - 0x0e waypoint radius, if we within this radius, then we considered that the wp is reached in cm
-  uint8_t               nav_flags;                // 0x0e  navigational flags to be defined
+  uint8_t		nav_crosstrack_gain;      // Crosstrack gain *100 (1 - 0.01 , 100 - 1)
+  uint8_t		nav_speed_min;		  // minimum speed for navigation cm/s
+  uint16_t		nav_speed_max;		  // maxiumum speed for navigation cm/s
+  uint16_t		nav_bank_max;		  // maximum banking 1deg = 100, 30deg = 3000
+  uint16_t		wp_radius;		  // waypoint radius, if we within this radius, then we considered that the wp is reached in cm
+  uint8_t               nav_flags;                // navigational flags to be defined
+             
   
 //PID values
   uint8_t              poshold_p;		  // *100
   uint8_t              poshold_i;		  // *100
-  uint8_t               poshold_imax;             // *1
+  uint8_t              poshold_imax;              // *1
 
   uint8_t              poshold_rate_p;  	  // *10
   uint8_t              poshold_rate_i;	    	  // *100
   uint8_t              poshold_rate_d;		  // *1000
-  uint8_t               poshold_rate_imax;	  // *1
+  uint8_t              poshold_rate_imax;	  // *1
 
   uint8_t              nav_p;			  // *10
   uint8_t              nav_i;			  // *100
   uint8_t              nav_d;			  // *1000
-  uint8_t               nav_imax;		  // *1
+  uint8_t              nav_imax;		  // *1
   
   WAYPOINT              gps_wp[16];               // 16 waypoints, WP#0 is RTH position
 } I2C_REGISTERS;
@@ -141,6 +148,8 @@ static uint8_t         new_command;                        //new command receive
 
 //////////////////////////////////////////////////////////////////////////////
 // Variables and controllers
+
+//PID controllers
  
 APM_PI	pi_poshold_lat(POSHOLD_P, POSHOLD_I, POSHOLD_IMAX * 100);
 APM_PI	pi_poshold_lon(POSHOLD_P, POSHOLD_I, POSHOLD_IMAX * 100);
@@ -150,10 +159,11 @@ AC_PID	pid_nav_lat(NAV_P,NAV_I,NAV_D,NAV_IMAX * 100);
 AC_PID	pid_nav_lon(NAV_P,NAV_I,NAV_D,NAV_IMAX * 100);
 
 // used to track the elapsed time between GPS reads
-static uint32_t         nav_loopTimer;
+static uint32_t                 nav_loopTimer;
 // Delta Time in milliseconds for navigation computations, updated with every good GPS read
 static float 			dTnav;
 
+//Actual navigation mode, this needed since we swith to poshold ence arrived at home
 static int8_t  nav_mode = NAV_MODE_NONE;            //Navigation mode
 
 static int16_t x_actual_speed = 0;
@@ -170,9 +180,9 @@ static float	GPS_scaleLonUp;
 
 // The difference between the desired rate of travel and the actual rate of travel
 // updated after GPS read - 5-10hz
-static int16_t x_rate_error;
-static int16_t y_rate_error;
-static int32_t	long_error, lat_error;
+static int16_t   x_rate_error;
+static int16_t   y_rate_error;
+static int32_t	 long_error, lat_error;
 
 // The desired bank towards North (Positive) or South (Negative)
 static int16_t	nav_lat;
@@ -219,20 +229,28 @@ static int32_t	wp_distance;
 
 // used for slow speed wind up when start navigation;
 static int16_t waypoint_speed_gov;
+
+// this is the navigation mode what is commanded
 static uint8_t GPSMode = GPSMODE_NONAV;          
 
-static uint32_t lastframe_time = 0;
 
+////////////////////////////////////////////////////////////////////////////////////
+// Blink code variables
+//
+static uint32_t lastframe_time = 0;
 static uint32_t _statusled_timer = 0;
 static int8_t _statusled_blinks = 0;
 static boolean _statusled_state = 0;
 
-
 ////////////////////////////////////////////////////////////////////////////////////
-//PID based GPS navigation functions
-//Author : EOSBandi
-//Based on code and ideas from the Arducopter team: Jason Short,Randy Mackay, Pat Hickey, Jose Julio, Jani Hirvinen
-//Andrew Tridgell, Justin Beech, Adam Rivera, Jean-Louis Naudin, Roberto Navoni
+// moving average filter variables
+//
+static uint8_t GPS_filter_index = 0;
+static int32_t GPS_filter[2][GPS_FILTER_VECTOR_LENGTH];
+static int32_t GPS_filter_sum[2];
+static int32_t GPS_read[2];
+static int32_t GPS_filtered[2];
+static int32_t GPS_degree[2];    //the lat lon degree without any decimals (lat/10 000 000)
 
 ////////////////////////////////////////////////////////////////////////////////////
 // this is used to offset the shrinking longitude as we go towards the poles	
@@ -376,13 +394,13 @@ static void GPS_calc_poshold(int x_error, int y_error)
 	p				= pid_poshold_rate_lon.get_p(x_rate_error);
 	i				= pid_poshold_rate_lon.get_i(x_rate_error + x_error, dTnav);
 	d				= pid_poshold_rate_lon.get_d(x_error, dTnav);
-    d                               = constrain(d, -2000, 2000);
-    // get rid of noise
-    if(abs(x_actual_speed) < 50){
-       d = 0;
-    }
+        d                               = constrain(d, -2000, 2000);
+        // get rid of noise
+        if ( (i2c_dataset.nav_flags & I2C_NAV_FLAG_LOW_SPEED_D_FILTER) && (abs(x_actual_speed) < 50)) { 
+          d = 0;
+        }
 	output			= p + i + d;
-    nav_lon			= constrain(output, -NAV_BANK_MAX, NAV_BANK_MAX); 		
+        nav_lon			= constrain(output, -NAV_BANK_MAX, NAV_BANK_MAX); 		
 
 	// North / South
 	y_target_speed 	= pi_poshold_lat.get_p(y_error);			// calculate desired speed from lat error
@@ -391,11 +409,11 @@ static void GPS_calc_poshold(int x_error, int y_error)
 	p				= pid_poshold_rate_lat.get_p(y_rate_error);
 	i				= pid_poshold_rate_lat.get_i(y_rate_error + y_error, dTnav);
 	d				= pid_poshold_rate_lat.get_d(y_error, dTnav);
-    d                               = constrain(d, -2000, 2000);
-    // get rid of noise
-    if(abs(y_actual_speed) < 50){
-        d = 0;
-    }
+        d                               = constrain(d, -2000, 2000);
+        // get rid of noise
+        if ( (i2c_dataset.nav_flags & I2C_NAV_FLAG_LOW_SPEED_D_FILTER) && (abs(y_actual_speed) < 50)) { 
+           d = 0;
+        }
 	output			= p + i + d;
 	nav_lat			= constrain(output, -NAV_BANK_MAX, NAV_BANK_MAX); 
 
@@ -623,13 +641,17 @@ bool GPS_newFrame(char c) {
                      {
                       case 1: i2c_dataset.time = (atof(string)*1000);      //up to .000 s precision not needed really but the data is there anyway
                               break;
-                      case 2: i2c_dataset.gps_loc.lat = GPS_coord_to_degrees(string);
+                      //case 2: i2c_dataset.gps_loc.lat = GPS_coord_to_degrees(string);
+                      case 2: GPS_read[LAT] = GPS_coord_to_degrees(string);
                               break;
-                      case 3: if (string[0] == 'S') i2c_dataset.gps_loc.lat = -i2c_dataset.gps_loc.lat;
+                      //case 3: if (string[0] == 'S') i2c_dataset.gps_loc.lat = -i2c_dataset.gps_loc.lat;
+                      case 3: if (string[0] == 'S') GPS_read[LAT] = -GPS_read[LAT];
                               break;
-                      case 4: i2c_dataset.gps_loc.lon = GPS_coord_to_degrees(string);
+                      //case 4: i2c_dataset.gps_loc.lon = GPS_coord_to_degrees(string);
+                      case 4: GPS_read[LON] = GPS_coord_to_degrees(string);
                               break;
-                      case 5: if (string[0] == 'W') i2c_dataset.gps_loc.lon = -i2c_dataset.gps_loc.lon;
+                      //case 5: if (string[0] == 'W') i2c_dataset.gps_loc.lon = -i2c_dataset.gps_loc.lon;
+                      case 5: if (string[0] == 'W') GPS_read[LON] = -GPS_read[LON];
                               break;
                       case 6: i2c_dataset.status.gps2dfix = string[0]  > '0';
                               break;
@@ -764,20 +786,8 @@ void setup() {
 
   uint8_t i;
 
-//Assume 9600 bps
-//  Serial.begin(38400);
-//  delay(800);
-//  Serial.print("$PMTK251,115200*1F\r\n");
-//  Serial.end();
-//  delay(800);
   Serial.begin(115200);
-//  Serial.print("$PMTK220,100*2F\r\n");
-//  delay(800);
-//  Serial.println("$PMTK314,0,1,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0*29");
-//  delay(800);//Enable it for 10Hz mode 
-//  Serial.println("$PMTK300,100,0,0,0,0*2C"); //Enable it for 10Hz mode 
 
-  
   //Init i2c_dataset;
   uint8_t *ptr = (uint8_t *)&i2c_dataset;
   for (i=0;i<sizeof(i2c_dataset);i++) { *ptr = 0; ptr++;}
@@ -805,6 +815,7 @@ void setup() {
   i2c_dataset.nav_d               = NAV_D * 1000;
   i2c_dataset.nav_imax            = NAV_IMAX;
 
+  i2c_dataset.nav_flags           = 0x80 + 0x40;      // GPS filter and low speed filters are on
 
   //Start I2C communication routines
   Wire.begin(I2C_ADDRESS);               // DO NOT FORGET TO COMPILE WITH 400KHz!!! else change TWBR Speed to 100khz on Host !!! Address 0x40 write 0x41 read
@@ -822,11 +833,46 @@ void loop() {
   static uint8_t GPS_fix_home;
   static uint8_t _command_wp;
   static uint8_t _command;
-  
   static uint32_t _watchdog_timer = 0;
+  uint8_t axis;
+  uint16_t fraction3[2];
 
      while (Serial.available()) {
      if (GPS_newFrame(Serial.read())) {
+
+       // We have a valid GGA frame and we have lat and lon in GPS_read_lat and GPS_read_lon, apply moving average filter
+       // this is a little bit tricky since the 1e7/deg precision easily overflow a long, so we apply the filter to the fractions
+       // only, and strip the full degrees part. This means that we have to disable the filter if we are very close to a degree line
+
+       if (i2c_dataset.nav_flags & I2C_NAV_FLAG_GPS_FILTER) {      //is filtering switched on ?
+
+         GPS_filter_index = ++GPS_filter_index % GPS_FILTER_VECTOR_LENGTH;
+         
+         for (axis = 0; axis< 2; axis++) {
+         GPS_degree[axis] = GPS_read[axis] / 10000000;  // get the degree to assure the sum fits to the int32_t
+  
+         // How close we are to a degree line ? its the first three digits from the fractions of degree
+         //Check if we are close to a degree line, if yes, disable averaging,
+         fraction3[axis] = (GPS_read[axis]- GPS_degree[axis]*10000000) / 10000;
+  
+         GPS_filter_sum[axis] -= GPS_filter[axis][GPS_filter_index];
+         GPS_filter[axis][GPS_filter_index] = GPS_read[axis] - (GPS_degree[axis]*10000000); 
+         GPS_filter_sum[axis] += GPS_filter[axis][GPS_filter_index];
+         GPS_filtered[axis] = GPS_filter_sum[axis] / GPS_FILTER_VECTOR_LENGTH + (GPS_degree[axis]*10000000);
+         }       
+         
+         if ( nav_mode == NAV_MODE_POSHOLD) {      //we use gps averaging only in poshold mode...
+             if ( fraction3[LAT]>1 && fraction3[LAT]<999 ) i2c_dataset.gps_loc.lat = GPS_filtered[LAT]; else i2c_dataset.gps_loc.lat = GPS_read[LAT];
+             if ( fraction3[LON]>1 && fraction3[LON]<999 ) i2c_dataset.gps_loc.lon = GPS_filtered[LON]; else i2c_dataset.gps_loc.lon = GPS_read[LON];       
+         } else {
+             i2c_dataset.gps_loc.lat = GPS_read[LAT];
+             i2c_dataset.gps_loc.lon = GPS_read[LON];
+         }
+       } else { // ignore filtering since it switced off in the nav_flags
+           i2c_dataset.gps_loc.lat = GPS_read[LAT];
+           i2c_dataset.gps_loc.lon = GPS_read[LON];
+       }
+       
        if (i2c_dataset.status.gps3dfix == 1 && i2c_dataset.status.numsats >= 5) {
           
          lastframe_time = millis();
@@ -855,9 +901,6 @@ void loop() {
           i2c_dataset.home_to_copter_bearing = GPS_bearing(i2c_dataset.gps_wp[0].position.lat,i2c_dataset.gps_wp[0].position.lon,GPS_latitude,GPS_longitude);
           //calculate the current velocity based on gps coordinates continously to get a valid speed at the moment when we start navigating
           GPS_calc_velocity(GPS_latitude,GPS_longitude);        
-          
-          //p("Distance to home (m):%d Bearing:%d\r\n",i2c_dataset.distance_to_home/100,i2c_dataset.home_to_copter_bearing/100);
-          
           
           if (GPSMode != 0){    //ok we are navigating 
              //do gps nav calculations here   
@@ -972,9 +1015,6 @@ if (_watchdog_timer != 0)
           pid_nav_lon.kD((float)i2c_dataset.nav_d/1000.0f);
           pid_nav_lat.imax(i2c_dataset.nav_imax*100);
           pid_nav_lon.imax(i2c_dataset.nav_imax*100);
-  
-          
-          
        break;  
       case I2C_GPS_COMMAND_STOP_NAV:
           GPS_reset_nav();

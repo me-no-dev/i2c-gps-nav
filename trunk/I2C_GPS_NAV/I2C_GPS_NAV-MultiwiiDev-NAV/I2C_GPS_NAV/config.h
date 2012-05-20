@@ -28,5 +28,11 @@
 //
 #define CROSSTRACK_GAIN            1            // Weighting the cross track error
 #define NAV_SPEED_MIN              100          // cm/sec minimum navigational speed when NAV_SLOW_NAV id false
-#define NAV_SPEED_MAX              400          // cm/sec maximum navigational speed
-#define NAV_BANK_MAX               3000         // 20deg max banking when navigating (just for security and testing)
+#define NAV_SPEED_MAX              300          // cm/sec maximum navigational speed
+#define NAV_BANK_MAX               2500         // 20deg max banking when navigating (just for security and testing)
+
+////////////////////////////////////////////////////////////////////////////////////
+// GPS data filtering - moving average filter vector length
+//
+#define GPS_FILTER_VECTOR_LENGTH 5
+

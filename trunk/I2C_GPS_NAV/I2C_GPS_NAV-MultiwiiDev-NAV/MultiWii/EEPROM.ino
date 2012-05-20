@@ -69,7 +69,7 @@ void readEEPROM() {
   #endif
   
   #if defined(GPS)
-    GPS_set_pids();
+    if (i2c_init_done) GPS_set_pids();
   #endif
   
 }
