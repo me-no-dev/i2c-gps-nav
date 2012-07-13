@@ -1,5 +1,5 @@
 /*
-	LeadFilter.cpp - GPS lag remover library for Arduino
+	LeadFilter.cpp - GPS lag remover for Arduino
 	Original Code by Jason Short. DIYDrones.com, changes by Andras Schaffer
 
 	This library is free software; you can redistribute it and / or
