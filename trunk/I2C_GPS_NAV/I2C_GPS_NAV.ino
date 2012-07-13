@@ -24,7 +24,7 @@
 #define VERSION 21                                                         //Software version for cross checking
 
 
-#include "Wire.h"
+#include "WireMW.h"
 #include "PIDCtrl.h"
 #include "PICtrl.h"
 #include "LeadFilter.h"
