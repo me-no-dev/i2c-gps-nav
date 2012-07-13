@@ -1,12 +1,10 @@
 /*******************************************************************************************************************************
  * I2CGPS  - Inteligent GPS and NAV module for MultiWii by EOSBandi
- * V2.0   
+ * V2.1   
  *
  * This program implements position hold and navigational functions for MultiWii by offloading caclulations and gps parsing 
  * into a secondary arduino processor connected to the MultiWii via i2c.
  * Once activated it outputs desired banking in a lat/lon coordinate system, which can be easily rotated into the copter's frame of reference.
- * Need an updated version of Wire library, since current one does not handle repeated start in slave mode.
- * also uses PI and PID libraries from the Arduplane team
  *
  * Navigation and Position hold routines and PI/PID libraries are based on code and ideas from the Arducopter team:
  * Jason Short,Randy Mackay, Pat Hickey, Jose Julio, Jani Hirvinen
@@ -23,7 +21,7 @@
  * General Public License for more details.
 ***********************************************************************************************************************************/
 
-#define VERSION 20                                                         //Software version for cross checking
+#define VERSION 21                                                         //Software version for cross checking
 
 
 #include "Wire.h"
