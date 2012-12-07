@@ -10,16 +10,21 @@
 #define GPS_SERIAL_SPEED 115200
 
 /* GPS protocol 
- * NMEA  - Standard NMEA protocol GGA, GSA and RMC  sentences are needed
- * UBLOX - U-Blox binary protocol, use the ublox config file (u-blox-config.ublox.txt) from the source tree 
- * MTK   - MTK binary protocol with auto setup, load (AXN1.51_2722_3329_384.1151100.5.bin) firmware to the GPS module (MTK3329 chips only)
+ * NMEA			- Standard NMEA protocol GGA, GSA and RMC  sentences are needed
+ * UBLOX		- U-Blox binary protocol, use the ublox config file (u-blox-config.ublox.txt) from the source tree 
+ * MTK_BINARY   - MTK binary protocol with auto setup, load (AXN1.51_2722_3329_384.1151100.5.bin) firmware to the GPS module (MTK3329 chips only)
+ * MTK_INIT     - Initialize MTK GPS (if MTK_BINARY is not defined then it goes to NMEA, otherwise it goes for binary)
  * With MTK and UBLOX you don't have to use GPS_FILTERING in multiwii code !!!
  *
  */
 
+
 //#define NMEA
 //#define UBLOX
-#define MTK
+#define MTK_BINARY
+#define MTK_INIT
+
+
 
 
 

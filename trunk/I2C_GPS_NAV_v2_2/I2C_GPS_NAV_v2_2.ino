@@ -1,6 +1,6 @@
 /*******************************************************************************************************************************
  * I2CGPS  - Inteligent GPS and NAV module for MultiWii by EOSBandi
- * V2.1   
+ * V2.2   
  *
  * This program implements position hold and navigational functions for MultiWii by offloading caclulations and gps parsing 
  * into a secondary arduino processor connected to the MultiWii via i2c.
@@ -21,7 +21,7 @@
  * General Public License for more details.
 ***********************************************************************************************************************************/
 
-#define VERSION 21                                                         //Software version for cross checking
+#define VERSION 22                                                         //Software version for cross checking
 
 
 #include "WireMW.h"
@@ -951,7 +951,7 @@ bool UBLOX_parse_gps(void)
 
 #endif //UBLOX
 
-#if defined(MTK)
+#if defined(MTK_BINARY)
     struct diyd_mtk_msg {
         int32_t		latitude;
         int32_t		longitude;
@@ -1166,35 +1166,100 @@ void blink_update()
 
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// GPS initialisation
+//
+
+  uint32_t init_speed[5] = {9600,19200,38400,57600,115200};
+
+ #if defined(UBLOX)
+   prog_char UBLOX_INIT[] PROGMEM = {                          // PROGMEM array must be outside any function !!!
+     0xB5,0x62,0x06,0x01,0x03,0x00,0xF0,0x05,0x00,0xFF,0x19,                            //disable all default NMEA messages
+     0xB5,0x62,0x06,0x01,0x03,0x00,0xF0,0x03,0x00,0xFD,0x15,
+     0xB5,0x62,0x06,0x01,0x03,0x00,0xF0,0x01,0x00,0xFB,0x11,
+     0xB5,0x62,0x06,0x01,0x03,0x00,0xF0,0x00,0x00,0xFA,0x0F,
+     0xB5,0x62,0x06,0x01,0x03,0x00,0xF0,0x02,0x00,0xFC,0x13,
+     0xB5,0x62,0x06,0x01,0x03,0x00,0xF0,0x04,0x00,0xFE,0x17,
+     0xB5,0x62,0x06,0x01,0x03,0x00,0x01,0x02,0x01,0x0E,0x47,                            //set POSLLH MSG rate
+     0xB5,0x62,0x06,0x01,0x03,0x00,0x01,0x03,0x01,0x0F,0x49,                            //set STATUS MSG rate
+     0xB5,0x62,0x06,0x01,0x03,0x00,0x01,0x06,0x01,0x12,0x4F,                            //set SOL MSG rate
+     0xB5,0x62,0x06,0x01,0x03,0x00,0x01,0x12,0x01,0x1E,0x67,                            //set VELNED MSG rate
+     0xB5,0x62,0x06,0x16,0x08,0x00,0x03,0x07,0x03,0x00,0x51,0x08,0x00,0x00,0x8A,0x41,   //set WAAS to EGNOS
+     0xB5, 0x62, 0x06, 0x08, 0x06, 0x00, 0xC8, 0x00, 0x01, 0x00, 0x01, 0x00, 0xDE, 0x6A //set rate to 5Hz
+   };
+ #endif
+
+  void GPS_SerialInit() {
+    Serial.begin(GPS_SERIAL_SPEED);  
+    delay(1000);
+    #if defined(UBLOX)
+	//Set speed
+      for(uint8_t i=0;i<5;i++){
+        Serial.begin(init_speed[i]);          // switch UART speed for sending SET BAUDRATE command (NMEA mode)
+        #if (GPS_SERIAL_SPEED==19200)
+          Serial.write(PSTR("$PUBX,41,1,0003,0001,19200,0*23\r\n"));     // 19200 baud - minimal speed for 5Hz update rate
+        #endif  
+        #if (GPS_SERIAL_SPEED==38400)
+          Serial.write(PSTR("$PUBX,41,1,0003,0001,38400,0*26\r\n"));     // 38400 baud
+        #endif  
+        #if (GPS_SERIAL_SPEED==57600)
+          Serial.write(PSTR("$PUBX,41,1,0003,0001,57600,0*2D\r\n"));     // 57600 baud
+        #endif  
+        #if (GPS_SERIAL_SPEED==115200)
+          Serial.write(PSTR("$PUBX,41,1,0003,0001,115200,0*1E\r\n"));    // 115200 baud
+        #endif  
+        delay(300);		//Wait for init 
+      }
+      delay(200);
+      Serial.begin(GPS_SERIAL_SPEED);  
+      for(uint8_t i=0; i<sizeof(UBLOX_INIT); i++) {                        // send configuration data in UBX protocol
+        Serial.write(pgm_read_byte(UBLOX_INIT+i));
+        //delay(5); //simulating a 38400baud pace (or less), otherwise commands are not accepted by the device.
+      }
+    #elif defined(INIT_MTK_GPS)                              // MTK GPS setup
+      for(uint8_t i=0;i<5;i++){
+        Serial.begin,init_speed[i]);                // switch UART speed for sending SET BAUDRATE command
+        #if (GPS_SERIAL_SPEED==19200)
+          Serial.write(PSTR("$PMTK251,19200*22\r\n"));     // 19200 baud - minimal speed for 5Hz update rate
+        #endif  
+        #if (GPS_SERIAL_SPEED==38400)
+          Serial.write(PSTR("$PMTK251,38400*27\r\n"));     // 38400 baud
+        #endif  
+        #if (GPS_SERIAL_SPEED==57600)
+          Serial.write(PSTR("$PMTK251,57600*2C\r\n"));     // 57600 baud
+        #endif  
+        #if (GPS_SERIAL_SPEED==115200)
+          Serial.write(PSTR("$PMTK251,115200*1F\r\n"));    // 115200 baud
+        #endif  
+        delay(300);
+      }
+      // at this point we have GPS working at selected (via #define GPS_BAUD) baudrate
+      Serial.begin(GPS_SERIAL_SPEED);
+      Serial.write(PSTR("$PMTK314,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*28\r\n")); // only GGA and RMC sentence
+      Serial.write(PSTR("$PMTK220,200*2C\r\n"));           // 5 Hz update rate
+
+	  #if defined(MTK_BINARY)
+ 	  Serial.write("$PGCMD,16,0,0,0,0,0*6A\r\n");
+      delay(1000);
+      Serial.write("$PGCMD,16,0,0,0,0,0*6A\r\n");
+      delay(300);
+      #endif
+
+
+
+    #endif     
+  }
+
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Setup
 //
 void setup() {
 
   uint8_t i;
 
-#if defined(MTK)
-/* Using the AXN 1.51 firmware which defaults at 1Hz/38400 but supports binary protocol
- * First connect to it with 38400, then set the speed to 115200 
- * and set the update rate to 10Hz
- * and finally switch to Binary mode
- */
-
-Serial.begin(38400);
-delay(1500); //let it init
-Serial.write("$PMTK251,115200*1F\r\n");
-delay(300);
-Serial.end();
-
-Serial.begin(115200);
-Serial.write("$PGCMD,16,0,0,0,0,0*6A\r\n");
-delay(1000);
-Serial.write("$PGCMD,16,0,0,0,0,0*6A\r\n");
-delay(300);
-Serial.write("$PMTK220,100*2F\r\n");
-#else
-  //open serial port at 115200
-  Serial.begin(GPS_SERIAL_SPEED);
-#endif
+  //Init GPS
+  GPS_SerialInit();
 
   //Init i2c_dataset;
   uint8_t *ptr = (uint8_t *)&i2c_dataset;
@@ -1252,7 +1317,7 @@ void loop() {
 #if defined(UBLOX)
        if (GPS_UBLOX_newFrame(Serial.read())) {
 #endif
-#if defined(MTK)
+#if defined(MTK_BINARY)
        if (GPS_MTK_newFrame(Serial.read())) {
 #endif
 
@@ -1266,16 +1331,16 @@ void loop() {
          GPS_filter_index = ++GPS_filter_index % GPS_FILTER_VECTOR_LENGTH;
          
          for (axis = 0; axis< 2; axis++) {
-         GPS_degree[axis] = GPS_read[axis] / 10000000;  // get the degree to assure the sum fits to the int32_t
+			GPS_degree[axis] = GPS_read[axis] / 10000000;  // get the degree to assure the sum fits to the int32_t
   
-         // How close we are to a degree line ? its the first three digits from the fractions of degree
-         //Check if we are close to a degree line, if yes, disable averaging,
-         fraction3[axis] = (GPS_read[axis]- GPS_degree[axis]*10000000) / 10000;
-  
-         GPS_filter_sum[axis] -= GPS_filter[axis][GPS_filter_index];
-         GPS_filter[axis][GPS_filter_index] = GPS_read[axis] - (GPS_degree[axis]*10000000); 
-         GPS_filter_sum[axis] += GPS_filter[axis][GPS_filter_index];
-         GPS_filtered[axis] = GPS_filter_sum[axis] / GPS_FILTER_VECTOR_LENGTH + (GPS_degree[axis]*10000000);
+	         // How close we are to a degree line ? its the first three digits from the fractions of degree
+			//Check if we are close to a degree line, if yes, disable averaging,
+			fraction3[axis] = (GPS_read[axis]- GPS_degree[axis]*10000000) / 10000;
+	  
+			GPS_filter_sum[axis] -= GPS_filter[axis][GPS_filter_index];
+			GPS_filter[axis][GPS_filter_index] = GPS_read[axis] - (GPS_degree[axis]*10000000); 
+			GPS_filter_sum[axis] += GPS_filter[axis][GPS_filter_index];
+			GPS_filtered[axis] = GPS_filter_sum[axis] / GPS_FILTER_VECTOR_LENGTH + (GPS_degree[axis]*10000000);
          }       
          
          if ( nav_mode == NAV_MODE_POSHOLD) {      //we use gps averaging only in poshold mode...
@@ -1290,6 +1355,7 @@ void loop() {
            i2c_dataset.gps_loc.lon = GPS_read[LON];
        }
        
+
        if (i2c_dataset.status.gps3dfix == 1 && i2c_dataset.status.numsats >= 5) {
           
          lastframe_time = millis();
