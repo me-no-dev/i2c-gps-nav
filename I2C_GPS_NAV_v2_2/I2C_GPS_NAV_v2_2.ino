@@ -32,6 +32,8 @@
 
 #include "registers.h"                                                    //Register definitions
 #include "config.h"
+#include "sonar.h"
+
 
 #define REG_MAP_SIZE       sizeof(i2c_dataset)       //size of register map
 #define MAX_SENT_BYTES     0x0C                      //maximum amount of data that I could receive from a master device (register, plus 11 byte waypoint data)
@@ -53,6 +55,15 @@
 #define RADX100                    0.000174532925  
 //Blink feedback, by guru_florida
 #define BLINK_INTERVAL  90
+
+
+// Set up gps lag
+#if defined(UBLOX)
+  #define GPS_LAG 0.5f			//UBLOX GPS has a smaller lag than MTK and other
+#else 
+  #define GPS_LAG 1.0f				//We assumes that MTK GPS has a 1 sec lag
+#endif  
+
 
 typedef struct {
   uint8_t    new_data:1;
@@ -135,6 +146,9 @@ typedef struct {
   uint8_t              nav_imax;		  // *1
   
   WAYPOINT              gps_wp[16];               // 16 waypoints, WP#0 is RTH position
+
+  uint16_t				sonar_distance;
+
 } I2C_REGISTERS;
 
 static I2C_REGISTERS   i2c_dataset;
@@ -306,7 +320,7 @@ static bool check_missed_wp()
 	int32_t temp;
 	temp = target_bearing - original_target_bearing;
 	temp = wrap_18000(temp);
-	return (abs(temp) > 10000);	// we passed the waypoint by 100 degrees
+	return (labs(temp) > 9000);	// we passed the waypoint by 100 degrees
 }
 
 ////////////////////////////////////////////////////////////////////////////////////
@@ -364,8 +378,8 @@ static void GPS_calc_velocity( int32_t gps_latitude, int32_t gps_longitude){
 	last_latitude 	= gps_latitude;
 
 #if defined(GPS_LEAD_FILTER)
-        GPS_lead_longitude = xLeadFilter.get_position(gps_longitude,x_actual_speed);
-        GPS_lead_latitude  = yLeadFilter.get_position(gps_latitude,y_actual_speed);
+        GPS_lead_longitude = xLeadFilter.get_position(gps_longitude,x_actual_speed, GPS_LAG);
+        GPS_lead_latitude  = yLeadFilter.get_position(gps_latitude,y_actual_speed, GPS_LAG);
 #endif
 
 
@@ -404,11 +418,13 @@ static void GPS_calc_poshold(int x_error, int y_error)
 	p				= pid_poshold_rate_lon.get_p(x_rate_error);
 	i				= pid_poshold_rate_lon.get_i(x_rate_error + x_error, dTnav);
 	d				= pid_poshold_rate_lon.get_d(x_error, dTnav);
-        d                               = constrain(d, -2000, 2000);
-        // get rid of noise
-        if ( (i2c_dataset.nav_flags & I2C_NAV_FLAG_LOW_SPEED_D_FILTER) && (abs(x_actual_speed) < 50)) { 
-          d = 0;
-        }
+    d               = constrain(d, -2000, 2000);
+
+    // get rid of noise
+    if ( (i2c_dataset.nav_flags & I2C_NAV_FLAG_LOW_SPEED_D_FILTER) && (abs(x_actual_speed) < 50)) { 
+        d = 0;
+    }
+
 	output			= p + i + d;
         nav_lon			= constrain(output, -NAV_BANK_MAX, NAV_BANK_MAX); 		
 
@@ -1295,6 +1311,8 @@ void setup() {
   Wire.onRequest(requestEvent);          // Set up event handlers
   Wire.onReceive(receiveEvent);
 
+  //initialise sonar
+  sonar_init();
 
 }
 
@@ -1311,6 +1329,9 @@ void loop() {
   uint16_t fraction3[2];
 
      while (Serial.available()) {
+
+
+
 #if defined(NMEA)
        if (GPS_NMEA_newFrame(Serial.read())) {
 #endif 
@@ -1431,6 +1452,15 @@ void loop() {
                }
         // have new data at this point anyway
        i2c_dataset.status.new_data = 1;
+
+	   //Get sonar readings and update the data
+
+	   i2c_dataset.sonar_distance = sonar_last_pong();
+	   if (sonar_ready()) {
+		   sonar_ping();
+	   }
+
+
       } // new frame
      } //while 
 

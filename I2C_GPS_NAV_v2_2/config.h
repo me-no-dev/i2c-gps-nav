@@ -26,6 +26,8 @@
 
 
 
+#define USE_SONAR
+
 
 
 // Default PID variables
