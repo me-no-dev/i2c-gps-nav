@@ -1,6 +1,6 @@
-//Board = Arduino Mega 2560 or Mega ADK
+//Board = Arduino Pro or Pro Mini (5V, 16 MHz) w/ ATmega328
 #define ARDUINO 10
-#define __AVR_ATmega2560__
+#define __AVR_ATmega328P__
 #define F_CPU 16000000L
 #define __AVR__
 #define __cplusplus
@@ -54,7 +54,7 @@ void GPS_SerialInit();
 //already defined in arduno.h
 //already defined in arduno.h
 
-#include "Z:\arduino-1.0\hardware\arduino\variants\mega\pins_arduino.h" 
+#include "Z:\arduino-1.0\hardware\arduino\variants\standard\pins_arduino.h" 
 #include "Z:\arduino-1.0\hardware\arduino\cores\arduino\arduino.h"
 #include "Z:\I2C_GPS_NAV_v2_2\I2C_GPS_NAV_v2_2.ino"
 #include "Z:\I2C_GPS_NAV_v2_2\LeadFilter.cpp"
@@ -67,5 +67,8 @@ void GPS_SerialInit();
 #include "Z:\I2C_GPS_NAV_v2_2\WireMW.h"
 #include "Z:\I2C_GPS_NAV_v2_2\config.h"
 #include "Z:\I2C_GPS_NAV_v2_2\registers.h"
+#include "Z:\I2C_GPS_NAV_v2_2\sonar.cpp"
+#include "Z:\I2C_GPS_NAV_v2_2\sonar.h"
+#include "Z:\I2C_GPS_NAV_v2_2\sonar_structs.h"
 #include "Z:\I2C_GPS_NAV_v2_2\twiMW.c"
 #include "Z:\I2C_GPS_NAV_v2_2\twiMW.h"
