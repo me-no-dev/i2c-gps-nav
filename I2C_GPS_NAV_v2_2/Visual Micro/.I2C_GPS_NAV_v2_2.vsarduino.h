@@ -48,10 +48,11 @@ inline long _swapl(const void *bytes);
 bool GPS_MTK_newFrame(uint8_t data);
 void requestEvent();
 void receiveEvent(int bytesReceived);
-void blink_update();
+void blink_sonar_update();
 void GPS_SerialInit();
+void Sonar_init();
+void Sonar_update();
 //already defined in arduno.h
-void echoCheck();
 //already defined in arduno.h
 //already defined in arduno.h
 
