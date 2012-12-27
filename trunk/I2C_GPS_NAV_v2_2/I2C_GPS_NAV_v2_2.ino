@@ -32,8 +32,6 @@
 
 #include "registers.h"                                                    //Register definitions
 #include "config.h"
-#include "NewPing.h"
-
 
 #define REG_MAP_SIZE       sizeof(i2c_dataset)       //size of register map
 #define MAX_SENT_BYTES     0x0C                      //maximum amount of data that I could receive from a master device (register, plus 11 byte waypoint data)
@@ -56,13 +54,6 @@
 //Blink feedback, by guru_florida
 #define BLINK_INTERVAL  90
 
-#if defined(USE_SONAR)
-NewPing sonar(SONAR_TRIGGER_PIN, SONAR_ECHO_PIN, SONAR_MAX_DISTANCE);
-
-unsigned int pingSpeed = 50; // How frequently are we going to send out a ping (in milliseconds). 50ms would be 20 times a second.
-unsigned long pingTimer;     // Holds the next ping time.
-
-#endif
 
 // Set up gps lag
 #if defined(UBLOX)
@@ -73,16 +64,16 @@ unsigned long pingTimer;     // Holds the next ping time.
 
 #if defined(INIT_MTK_GPS)
 
- #define MTK_SET_BINARY          PSTR("$PGCMD,16,0,0,0,0,0*6A\r\n")
- #define MTK_SET_NMEA            PSTR("$PGCMD,16,1,1,1,1,1*6B\r\n")
- #define MTK_SET_NMEA_SENTENCES  PSTR("$PMTK314,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*28\r\n")
- #define MTK_OUTPUT_4HZ          PSTR("$PMTK220,250*29\r\n")
- #define MTK_OUTPUT_5HZ          PSTR("$PMTK220,200*2C\r\n")
- #define MTK_OUTPUT_10HZ         PSTR("$PMTK220,100*2F\r\n")
- #define MTK_NAVTHRES_OFF        PSTR("$PMTK397,0*23\r\n") // Set Nav Threshold (the minimum speed the GPS must be moving to update the position) to 0 m/s  
- #define SBAS_ON                 PSTR("$PMTK313,1*2E\r\n")
- #define WAAS_ON                 PSTR("$PMTK301,2*2E\r\n")
- #define SBAS_TEST_MODE			 PSTR("$PMTK319,0*25\r\n")	//Enable test use of sbas satelite in test mode (usually PRN124 is in test mode)
+ #define MTK_SET_BINARY          "$PGCMD,16,0,0,0,0,0*6A\r\n"
+ #define MTK_SET_NMEA            "$PGCMD,16,1,1,1,1,1*6B\r\n"
+ #define MTK_SET_NMEA_SENTENCES  "$PMTK314,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*28\r\n"
+ #define MTK_OUTPUT_4HZ          "$PMTK220,250*29\r\n"
+ #define MTK_OUTPUT_5HZ          "$PMTK220,200*2C\r\n"
+ #define MTK_OUTPUT_10HZ         "$PMTK220,100*2F\r\n"
+ #define MTK_NAVTHRES_OFF        "$PMTK397,0*23\r\n" // Set Nav Threshold (the minimum speed the GPS must be moving to update the position) to 0 m/s  
+ #define SBAS_ON                 "$PMTK313,1*2E\r\n"
+ #define WAAS_ON                 "$PMTK301,2*2E\r\n"
+ #define SBAS_TEST_MODE			 "$PMTK319,0*25\r\n"	//Enable test use of sbas satelite in test mode (usually PRN124 is in test mode)
 
 #endif
 
@@ -279,6 +270,12 @@ static uint32_t lastframe_time = 0;
 static uint32_t _statusled_timer = 0;
 static int8_t _statusled_blinks = 0;
 static boolean _statusled_state = 0;
+
+
+////////////////////////////////////////////////////////////////////////////////////
+// Sonar variables
+//
+static uint32_t _sonar_timer = 0;
 
 ////////////////////////////////////////////////////////////////////////////////////
 // moving average filter variables
@@ -1185,9 +1182,19 @@ void receiveEvent(int bytesReceived)
 }
 
 
-void blink_update()
+void blink_sonar_update()
 {
-  uint32_t now = millis();
+
+	uint32_t now = millis();
+
+#if defined(SONAR)
+  if(_sonar_timer < now)//update sonar readings every 50ms
+  {
+   _sonar_timer = now + 50;
+   Sonar_update();
+  }
+#endif
+
   if(_statusled_timer < now) {
     if(lastframe_time+5000 < now) {
       // no gps communication  
@@ -1220,6 +1227,9 @@ void blink_update()
 }
 
 
+
+
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // GPS initialisation
 //
@@ -1247,7 +1257,7 @@ void blink_update()
   
   Serial.begin(GPS_SERIAL_SPEED);  
   delay(1000);
-
+  
 #if defined(UBLOX)
 	//Set speed
       for(uint8_t i=0;i<5;i++){
@@ -1277,16 +1287,16 @@ void blink_update()
       for(uint8_t i=0;i<5;i++){
         Serial.begin(init_speed[i]);					   // switch UART speed for sending SET BAUDRATE command
         #if (GPS_SERIAL_SPEED==19200)
-          Serial.write(PSTR("$PMTK251,19200*22\r\n"));     // 19200 baud - minimal speed for 5Hz update rate
+          Serial.write("$PMTK251,19200*22\r\n");     // 19200 baud - minimal speed for 5Hz update rate
         #endif  
         #if (GPS_SERIAL_SPEED==38400)
-          Serial.write(PSTR("$PMTK251,38400*27\r\n"));     // 38400 baud
+          Serial.write("$PMTK251,38400*27\r\n");     // 38400 baud
         #endif  
         #if (GPS_SERIAL_SPEED==57600)
-          Serial.write(PSTR("$PMTK251,57600*2C\r\n"));     // 57600 baud
+          Serial.write("$PMTK251,57600*2C\r\n");     // 57600 baud
         #endif  
         #if (GPS_SERIAL_SPEED==115200)
-          Serial.write(PSTR("$PMTK251,115200*1F\r\n"));    // 115200 baud
+          Serial.write("$PMTK251,115200*1F\r\n");    // 115200 baud
         #endif  
         delay(300);
       }
@@ -1301,15 +1311,13 @@ void blink_update()
 	  delay(100);
       Serial.write(SBAS_TEST_MODE);
 	  delay(100);
-      Serial.write(MTK_OUTPUT_5HZ);           // 5 Hz update rate
+      Serial.write(MTK_OUTPUT_4HZ);           // 5 Hz update rate
 	  delay(100);
 
       #if defined(NMEA)
         Serial.write(MTK_SET_NMEA_SENTENCES); // only GGA and RMC sentence
       #endif     
 	  #if defined(MTK_BINARY19) || defined(MTK_BINARY16)
-		Serial.write(MTK_SET_BINARY);
-		delay(300);
 		Serial.write(MTK_SET_BINARY);
       #endif
 
@@ -1318,6 +1326,66 @@ void blink_update()
 #endif     
   }
 
+#if defined(SONAR)
+
+volatile uint32_t Sonar_starTime = 0;
+volatile uint32_t Sonar_echoTime = 0;
+volatile uint16_t Sonar_waiting_echo = 0;
+
+void Sonar_init()
+{
+  // Pin change interrupt control register - enables interrupt vectors
+  PCICR  |= (1<<PCIE1); // Port C
+ 
+  // Pin change mask registers decide which pins are enabled as triggers
+  PCMSK1 |= (1<<PCINT10); // pin 2 PC2
+  
+  DDRC |= 0x08; //triggerpin PC3 as output
+   
+  Sonar_update();
+}
+
+ISR(PCINT1_vect) {
+    uint8_t pin = PINC;
+    if (pin & 1<<PCINT10) {     //indicates if the bit 0 of the arduino port [B0-B7] is at a high state
+      Sonar_starTime = micros();
+    }
+    else {
+      Sonar_echoTime = micros() - Sonar_starTime; // Echo time in microseconds
+     
+      if (Sonar_echoTime <= 25000) {     // valid distance
+        i2c_dataset.sonar_distance = Sonar_echoTime / 58;
+      }
+      else
+      {
+      // No valid data
+        i2c_dataset.sonar_distance = -1;
+      }
+      Sonar_waiting_echo = 0;
+    }
+}
+
+
+void Sonar_update()
+{
+ 
+  if (Sonar_waiting_echo == 0)
+  {
+    // Send 2ms LOW pulse to ensure we get a nice clean pulse
+    PORTC &= ~(0x08);//PC3 low    
+    delayMicroseconds(2);
+   
+    // send 10 microsecond pulse
+    PORTC |= (0x08);//PC3 high 
+    // wait 10 microseconds before turning off
+    delayMicroseconds(10);
+    // stop sending the pulse
+    PORTC &= ~(0x08);//PC3 low
+   
+    Sonar_waiting_echo = 1;
+  }
+}
+#endif
 
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1327,11 +1395,14 @@ void setup() {
 
   uint8_t i;
 
+  //Init Sonar
+#if defined(SONAR)
+  Sonar_init();
+#endif
+
   //Init GPS
-
   GPS_SerialInit();
-  //Serial.begin(38400);
-
+  
   //Init i2c_dataset;
   uint8_t *ptr = (uint8_t *)&i2c_dataset;
   for (i=0;i<sizeof(i2c_dataset);i++) { *ptr = 0; ptr++;}
@@ -1366,23 +1437,7 @@ void setup() {
   Wire.onRequest(requestEvent);          // Set up event handlers
   Wire.onReceive(receiveEvent);
 
-  //initialise sonar
-#if defined(USE_SONAR)
-  pingTimer = millis();
-#endif
 }
-
-#if defined(USE_SONAR)
-void echoCheck() { // Timer2 interrupt calls this function every 24uS where you can check the ping status.
-  // Don't do anything here!
-  if (sonar.check_timer()) { // This is how you check to see if the ping was received.
-    // Here's where you can add code.
-	i2c_dataset.sonar_distance = sonar.ping_result/US_ROUNDTRIP_CM;
-  }
-  // Don't do anything here!
-}
-
-#endif
 
 /******************************************************************************************************************/
 /******************************************************* Main loop ************************************************/
@@ -1527,14 +1582,8 @@ void loop() {
      } //while 
 #pragma endregion
 
-blink_update();   
+blink_sonar_update();   
 
-#if defined(USE_SONAR)
-  if (millis() >= pingTimer) {   // pingSpeed milliseconds since last ping, do another ping.
-    pingTimer += pingSpeed;      // Set the next ping time.
-    sonar.ping_timer(echoCheck); // Send out the ping, calls "echoCheck" function every 24uS where you can check the ping status.
-  }
-#endif
 
 //check watchdog timer, after 1200ms without valid packet, assume that gps communication is lost.
 if (_watchdog_timer != 0)

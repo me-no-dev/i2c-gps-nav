@@ -7,7 +7,7 @@
 #define GPS_LEAD_FILTER
 
 /* Serial speed of the GPS */
-#define GPS_SERIAL_SPEED 115200
+#define GPS_SERIAL_SPEED 38400
 
 /* GPS protocol 
  * NMEA			- Standard NMEA protocol GGA, GSA and RMC  sentences are needed
@@ -23,13 +23,10 @@
 //#define UBLOX
 //#define MTK_BINARY16
 #define MTK_BINARY19
-#define MTK_INIT
+#define INIT_MTK_GPS
 
 
-#define USE_SONAR
-#define SONAR_TRIGGER_PIN 11
-#define SONAR_ECHO_PIN 12
-#define SONAR_MAX_DISTANCE 500
+#define SONAR
 
 
 // Default PID variables
