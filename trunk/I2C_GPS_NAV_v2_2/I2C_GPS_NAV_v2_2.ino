@@ -32,7 +32,7 @@
 
 #include "registers.h"                                                    //Register definitions
 #include "config.h"
-#include "sonar.h"
+#include "NewPing.h"
 
 
 #define REG_MAP_SIZE       sizeof(i2c_dataset)       //size of register map
@@ -56,6 +56,13 @@
 //Blink feedback, by guru_florida
 #define BLINK_INTERVAL  90
 
+#if defined(USE_SONAR)
+NewPing sonar(SONAR_TRIGGER_PIN, SONAR_ECHO_PIN, SONAR_MAX_DISTANCE);
+
+unsigned int pingSpeed = 50; // How frequently are we going to send out a ping (in milliseconds). 50ms would be 20 times a second.
+unsigned long pingTimer;     // Holds the next ping time.
+
+#endif
 
 // Set up gps lag
 #if defined(UBLOX)
@@ -63,6 +70,21 @@
 #else 
   #define GPS_LAG 1.0f				//We assumes that MTK GPS has a 1 sec lag
 #endif  
+
+#if defined(INIT_MTK_GPS)
+
+ #define MTK_SET_BINARY          PSTR("$PGCMD,16,0,0,0,0,0*6A\r\n")
+ #define MTK_SET_NMEA            PSTR("$PGCMD,16,1,1,1,1,1*6B\r\n")
+ #define MTK_SET_NMEA_SENTENCES  PSTR("$PMTK314,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*28\r\n")
+ #define MTK_OUTPUT_4HZ          PSTR("$PMTK220,250*29\r\n")
+ #define MTK_OUTPUT_5HZ          PSTR("$PMTK220,200*2C\r\n")
+ #define MTK_OUTPUT_10HZ         PSTR("$PMTK220,100*2F\r\n")
+ #define MTK_NAVTHRES_OFF        PSTR("$PMTK397,0*23\r\n") // Set Nav Threshold (the minimum speed the GPS must be moving to update the position) to 0 m/s  
+ #define SBAS_ON                 PSTR("$PMTK313,1*2E\r\n")
+ #define WAAS_ON                 PSTR("$PMTK301,2*2E\r\n")
+ #define SBAS_TEST_MODE			 PSTR("$PMTK319,0*25\r\n")	//Enable test use of sbas satelite in test mode (usually PRN124 is in test mode)
+
+#endif
 
 
 typedef struct {
@@ -967,7 +989,7 @@ bool UBLOX_parse_gps(void)
 
 #endif //UBLOX
 
-#if defined(MTK_BINARY)
+#if defined(MTK_BINARY16) || defined(MTK_BINARY19)
     struct diyd_mtk_msg {
         int32_t		latitude;
         int32_t		longitude;
@@ -982,15 +1004,26 @@ bool UBLOX_parse_gps(void)
     };
 // #pragma pack(pop)
     enum diyd_mtk_fix_type {
-        FIX_NONE = 1,
-        FIX_2D = 2,
-        FIX_3D = 3
+       FIX_NONE = 1,
+	   FIX_2D = 2,
+	   FIX_3D = 3,
+	   FIX_2D_SBAS = 6,
+	   FIX_3D_SBAS = 7 
     };
 
+#if defined(MTK_BINARY16)
     enum diyd_mtk_protocol_bytes {
         PREAMBLE1 = 0xd0,
         PREAMBLE2 = 0xdd,
     };
+#endif
+
+#if defined(MTK_BINARY19)
+    enum diyd_mtk_protocol_bytes {
+        PREAMBLE1 = 0xd1,
+        PREAMBLE2 = 0xdd,
+    };
+#endif
 
     // Packet checksum accumulators
     uint8_t 	_ck_a;
@@ -1087,10 +1120,16 @@ restart:
                 break;
             }
 
-            i2c_dataset.status.gps3dfix 			= _buffer.msg.fix_type == FIX_3D;
+            i2c_dataset.status.gps3dfix 			= ((_buffer.msg.fix_type == FIX_3D) || (_buffer.msg.fix_type == FIX_3D_SBAS));
+#if defined(MTK_BINARY16)
             GPS_read[LAT]		= _buffer.msg.latitude * 10;	// XXX doc says *10e7 but device says otherwise
             GPS_read[LON]		= _buffer.msg.longitude * 10;	// XXX doc says *10e7 but device says otherwise
-            i2c_dataset.altitude		= _buffer.msg.altitude /100;
+#endif
+#if defined(MTK_BINARY19)
+            GPS_read[LAT]		= _buffer.msg.latitude;	// XXX doc says *10e7 but device says otherwise
+            GPS_read[LON]		= _buffer.msg.longitude;	// XXX doc says *10e7 but device says otherwise
+#endif
+			i2c_dataset.altitude		= _buffer.msg.altitude /100;
             i2c_dataset.ground_speed	                = _buffer.msg.ground_speed;
             i2c_dataset.ground_course	        = _buffer.msg.ground_course;
             i2c_dataset.status.numsats		        = _buffer.msg.satellites;
@@ -1205,9 +1244,11 @@ void blink_update()
  #endif
 
   void GPS_SerialInit() {
-    Serial.begin(GPS_SERIAL_SPEED);  
-    delay(1000);
-    #if defined(UBLOX)
+  
+  Serial.begin(GPS_SERIAL_SPEED);  
+  delay(1000);
+
+#if defined(UBLOX)
 	//Set speed
       for(uint8_t i=0;i<5;i++){
         Serial.begin(init_speed[i]);          // switch UART speed for sending SET BAUDRATE command (NMEA mode)
@@ -1231,9 +1272,10 @@ void blink_update()
         Serial.write(pgm_read_byte(UBLOX_INIT+i));
         //delay(5); //simulating a 38400baud pace (or less), otherwise commands are not accepted by the device.
       }
-    #elif defined(INIT_MTK_GPS)                              // MTK GPS setup
+
+#elif defined(INIT_MTK_GPS)                            // MTK GPS setup
       for(uint8_t i=0;i<5;i++){
-        Serial.begin,init_speed[i]);                // switch UART speed for sending SET BAUDRATE command
+        Serial.begin(init_speed[i]);					   // switch UART speed for sending SET BAUDRATE command
         #if (GPS_SERIAL_SPEED==19200)
           Serial.write(PSTR("$PMTK251,19200*22\r\n"));     // 19200 baud - minimal speed for 5Hz update rate
         #endif  
@@ -1250,19 +1292,30 @@ void blink_update()
       }
       // at this point we have GPS working at selected (via #define GPS_BAUD) baudrate
       Serial.begin(GPS_SERIAL_SPEED);
-      Serial.write(PSTR("$PMTK314,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*28\r\n")); // only GGA and RMC sentence
-      Serial.write(PSTR("$PMTK220,200*2C\r\n"));           // 5 Hz update rate
 
-	  #if defined(MTK_BINARY)
- 	  Serial.write("$PGCMD,16,0,0,0,0,0*6A\r\n");
-      delay(1000);
-      Serial.write("$PGCMD,16,0,0,0,0,0*6A\r\n");
-      delay(300);
+	  Serial.write(MTK_NAVTHRES_OFF);
+	  delay(100);
+      Serial.write(SBAS_ON);
+	  delay(100);
+      Serial.write(WAAS_ON);
+	  delay(100);
+      Serial.write(SBAS_TEST_MODE);
+	  delay(100);
+      Serial.write(MTK_OUTPUT_5HZ);           // 5 Hz update rate
+	  delay(100);
+
+      #if defined(NMEA)
+        Serial.write(MTK_SET_NMEA_SENTENCES); // only GGA and RMC sentence
+      #endif     
+	  #if defined(MTK_BINARY19) || defined(MTK_BINARY16)
+		Serial.write(MTK_SET_BINARY);
+		delay(300);
+		Serial.write(MTK_SET_BINARY);
       #endif
 
 
 
-    #endif     
+#endif     
   }
 
 
@@ -1275,7 +1328,9 @@ void setup() {
   uint8_t i;
 
   //Init GPS
+
   GPS_SerialInit();
+  //Serial.begin(38400);
 
   //Init i2c_dataset;
   uint8_t *ptr = (uint8_t *)&i2c_dataset;
@@ -1312,9 +1367,22 @@ void setup() {
   Wire.onReceive(receiveEvent);
 
   //initialise sonar
-  sonar_init();
-
+#if defined(USE_SONAR)
+  pingTimer = millis();
+#endif
 }
+
+#if defined(USE_SONAR)
+void echoCheck() { // Timer2 interrupt calls this function every 24uS where you can check the ping status.
+  // Don't do anything here!
+  if (sonar.check_timer()) { // This is how you check to see if the ping was received.
+    // Here's where you can add code.
+	i2c_dataset.sonar_distance = sonar.ping_result/US_ROUNDTRIP_CM;
+  }
+  // Don't do anything here!
+}
+
+#endif
 
 /******************************************************************************************************************/
 /******************************************************* Main loop ************************************************/
@@ -1328,9 +1396,9 @@ void loop() {
   uint8_t axis;
   uint16_t fraction3[2];
 
+#pragma region while serial available
+
      while (Serial.available()) {
-
-
 
 #if defined(NMEA)
        if (GPS_NMEA_newFrame(Serial.read())) {
@@ -1338,7 +1406,7 @@ void loop() {
 #if defined(UBLOX)
        if (GPS_UBLOX_newFrame(Serial.read())) {
 #endif
-#if defined(MTK_BINARY)
+#if defined(MTK_BINARY16) || defined(MTK_BINARY19)
        if (GPS_MTK_newFrame(Serial.read())) {
 #endif
 
@@ -1347,6 +1415,7 @@ void loop() {
        // this is a little bit tricky since the 1e7/deg precision easily overflow a long, so we apply the filter to the fractions
        // only, and strip the full degrees part. This means that we have to disable the filter if we are very close to a degree line
 
+#pragma region GPS FILTER
        if (i2c_dataset.nav_flags & I2C_NAV_FLAG_GPS_FILTER) {      //is filtering switched on ?
 
          GPS_filter_index = ++GPS_filter_index % GPS_FILTER_VECTOR_LENGTH;
@@ -1376,6 +1445,7 @@ void loop() {
            i2c_dataset.gps_loc.lon = GPS_read[LON];
        }
        
+#pragma endregion
 
        if (i2c_dataset.status.gps3dfix == 1 && i2c_dataset.status.numsats >= 5) {
           
@@ -1390,24 +1460,24 @@ void loop() {
             i2c_dataset.gps_wp[0].position.lat = GPS_latitude;
             i2c_dataset.gps_wp[0].position.lon = GPS_longitude;
             GPS_calc_longitude_scaling(GPS_latitude);  //need an initial value for distance and bearing calc
-          }
-          //dTnav calculation
-          //Time for calculating x,y speed and navigation pids
-	   dTnav = (float)(millis() - nav_loopTimer)/ 1000.0;
-	   nav_loopTimer = millis();
-           // prevent runup from bad GPS
-	   dTnav = min(dTnav, 1.0);  
+         }
+         //dTnav calculation
+         //Time for calculating x,y speed and navigation pids
+		 dTnav = (float)(millis() - nav_loopTimer)/ 1000.0;
+		 nav_loopTimer = millis();
+         // prevent runup from bad GPS
+		 dTnav = min(dTnav, 1.0);  
 
-          _watchdog_timer = millis();  //Reset watchdog timer
+         _watchdog_timer = millis();  //Reset watchdog timer
           
-          //calculate distance and bearings for gui and other stuff continously this is independent from navigation
-          i2c_dataset.distance_to_home = GPS_distance_cm(GPS_latitude,GPS_longitude,i2c_dataset.gps_wp[0].position.lat,i2c_dataset.gps_wp[0].position.lon);
-          i2c_dataset.home_to_copter_bearing = GPS_bearing(i2c_dataset.gps_wp[0].position.lat,i2c_dataset.gps_wp[0].position.lon,GPS_latitude,GPS_longitude);
-          //calculate the current velocity based on gps coordinates continously to get a valid speed at the moment when we start navigating
-          GPS_calc_velocity(GPS_latitude,GPS_longitude);        
+         //calculate distance and bearings for gui and other stuff continously this is independent from navigation
+         i2c_dataset.distance_to_home = GPS_distance_cm(GPS_latitude,GPS_longitude,i2c_dataset.gps_wp[0].position.lat,i2c_dataset.gps_wp[0].position.lon);
+         i2c_dataset.home_to_copter_bearing = GPS_bearing(i2c_dataset.gps_wp[0].position.lat,i2c_dataset.gps_wp[0].position.lon,GPS_latitude,GPS_longitude);
+         //calculate the current velocity based on gps coordinates continously to get a valid speed at the moment when we start navigating
+         GPS_calc_velocity(GPS_latitude,GPS_longitude);        
           
-          if (GPSMode != 0){    //ok we are navigating 
-             //do gps nav calculations here   
+         if (GPSMode != 0){    //ok we are navigating 
+            //do gps nav calculations here   
 
 #if defined(GPS_LEAD_FILTER)
              wp_distance = GPS_distance_cm(GPS_lead_latitude,GPS_lead_longitude,GPS_WP_latitude,GPS_WP_longitude);
@@ -1453,18 +1523,18 @@ void loop() {
         // have new data at this point anyway
        i2c_dataset.status.new_data = 1;
 
-	   //Get sonar readings and update the data
-
-	   i2c_dataset.sonar_distance = sonar_last_pong();
-	   if (sonar_ready()) {
-		   sonar_ping();
-	   }
-
-
       } // new frame
      } //while 
+#pragma endregion
 
 blink_update();   
+
+#if defined(USE_SONAR)
+  if (millis() >= pingTimer) {   // pingSpeed milliseconds since last ping, do another ping.
+    pingTimer += pingSpeed;      // Set the next ping time.
+    sonar.ping_timer(echoCheck); // Send out the ping, calls "echoCheck" function every 24uS where you can check the ping status.
+  }
+#endif
 
 //check watchdog timer, after 1200ms without valid packet, assume that gps communication is lost.
 if (_watchdog_timer != 0)

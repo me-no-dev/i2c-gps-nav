@@ -7,6 +7,7 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <util/delay.h>
+#include <arduino.h>
 #include "sonar.h"
 
 #define SONAR_TRIGGER_PORT PORTD
@@ -29,6 +30,12 @@ static volatile enum {
 } sonar_state = SONAR_READY;
 
 void sonar_init(void) {
+
+
+	pinMode(8,INPUT);
+	pinMode(2,OUTPUT);
+
+
 	/* configure trigger output pin */
 	SONAR_TRIGGER_DDR |= 1<<SONAR_TRIGGER_BIT;
 	
