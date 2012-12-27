@@ -1,5 +1,5 @@
 //Board = Arduino Pro or Pro Mini (5V, 16 MHz) w/ ATmega328
-#define ARDUINO 10
+#define ARDUINO 103
 #define __AVR_ATmega328P__
 #define F_CPU 16000000L
 #define __AVR__
@@ -51,14 +51,17 @@ void receiveEvent(int bytesReceived);
 void blink_update();
 void GPS_SerialInit();
 //already defined in arduno.h
+void echoCheck();
 //already defined in arduno.h
 //already defined in arduno.h
 
-#include "Z:\arduino-1.0\hardware\arduino\variants\standard\pins_arduino.h" 
-#include "Z:\arduino-1.0\hardware\arduino\cores\arduino\arduino.h"
+#include "Z:\arduino-1.0.3\hardware\arduino\variants\standard\pins_arduino.h" 
+#include "Z:\arduino-1.0.3\hardware\arduino\cores\arduino\arduino.h"
 #include "Z:\I2C_GPS_NAV_v2_2\I2C_GPS_NAV_v2_2.ino"
 #include "Z:\I2C_GPS_NAV_v2_2\LeadFilter.cpp"
 #include "Z:\I2C_GPS_NAV_v2_2\LeadFilter.h"
+#include "Z:\I2C_GPS_NAV_v2_2\NewPing.cpp"
+#include "Z:\I2C_GPS_NAV_v2_2\NewPing.h"
 #include "Z:\I2C_GPS_NAV_v2_2\PICtrl.cpp"
 #include "Z:\I2C_GPS_NAV_v2_2\PICtrl.h"
 #include "Z:\I2C_GPS_NAV_v2_2\PIDCtrl.cpp"
