@@ -1311,7 +1311,7 @@ void blink_sonar_update()
 	  delay(100);
       Serial.write(SBAS_TEST_MODE);
 	  delay(100);
-      Serial.write(MTK_OUTPUT_4HZ);           // 5 Hz update rate
+      Serial.write(MTK_OUTPUT_5HZ);           // 5 Hz update rate
 	  delay(100);
 
       #if defined(NMEA)
