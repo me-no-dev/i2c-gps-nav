@@ -1187,7 +1187,7 @@ void blink_sonar_update()
 
 	uint32_t now = millis();
 
-#if defined(SONAR)
+#if defined(SONAR) && !defined(MAXBOTIX_PWM)
   if(_sonar_timer < now)//update sonar readings every 50ms
   {
    _sonar_timer = now + 50;
@@ -1341,19 +1341,22 @@ void Sonar_init()
   PCMSK1 |= (1<<PCINT10); // pin 2 PC2
   
   DDRC |= 0x08; //triggerpin PC3 as output
-   
+#if !defined(MAXBOTIX_PWM) 
   Sonar_update();
+#endif
 }
 
 ISR(PCINT1_vect) {
-    uint8_t pin = PINC;
-    if (pin & 1<<PCINT10) {     //indicates if the bit 0 of the arduino port [B0-B7] is at a high state
+
+    //uint8_t pin = PINC;
+
+    if (PINC & 1<<PCINT10) {     //indicates if the bit 0 of the arduino port [B0-B7] is at a high state
       Sonar_starTime = micros();
     }
     else {
       Sonar_echoTime = micros() - Sonar_starTime; // Echo time in microseconds
      
-      if (Sonar_echoTime <= 25000) {     // valid distance
+      if (Sonar_echoTime <= 700*58) {     // valid distance
         i2c_dataset.sonar_distance = Sonar_echoTime / 58;
       }
       else
@@ -1369,6 +1372,8 @@ ISR(PCINT1_vect) {
 void Sonar_update()
 {
  
+#if !defined(MAXBOTIX_PWM)
+
   if (Sonar_waiting_echo == 0)
   {
     // Send 2ms LOW pulse to ensure we get a nice clean pulse
@@ -1384,6 +1389,7 @@ void Sonar_update()
    
     Sonar_waiting_echo = 1;
   }
+#endif
 }
 #endif
 
