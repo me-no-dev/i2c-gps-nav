@@ -12,22 +12,34 @@
 /* GPS protocol 
  * NMEA			- Standard NMEA protocol GGA, GSA and RMC  sentences are needed
  * UBLOX		- U-Blox binary protocol, use the ublox config file (u-blox-config.ublox.txt) from the source tree 
- * MTK_BINARY   - MTK binary protocol with auto setup, load (AXN1.51_2722_3329_384.1151100.5.bin) firmware to the GPS module (MTK3329 chips only)
- * MTK_INIT     - Initialize MTK GPS (if MTK_BINARY is not defined then it goes to NMEA, otherwise it goes for binary)
+ * MTK_BINARY16 - MTK binary protocol (DIYDrones v1.6) 
+ * MTK_BINARY19 - MTK binary protocol (DIYDrones v1.9) 
+ * MTK_INIT     - Initialize MTK GPS (if MTK_BINARY16 or 19 is not defined then it goes to NMEA, otherwise it goes for binary)
  * With MTK and UBLOX you don't have to use GPS_FILTERING in multiwii code !!!
  *
  */
 
-
-//#define NMEA
+#define NMEA
 //#define UBLOX
 //#define MTK_BINARY16
-#define MTK_BINARY19
+//#define MTK_BINARY19
 #define INIT_MTK_GPS
 
 
-#define SONAR
-#define MAXBOTIX_PWM
+//////////////////////////////////////////////////////////////////////////////
+// Sonar support. Based on code mods from Crazy Al 
+// Connect Sonar trigger to PC3 (arduino pin A3) and echo output to PC2 (arduino pin A2)
+// Supported sonars : 
+// Ping/Pong type sonar modules such as HC-SR04, SRF-04, DYP-ME007 and many others...
+// PWM output continous sonars such as the MAXBOTIX series (connect pin2(PWM out) of the sonar to PC2
+
+#define SONAR						// USE Sonar
+
+//Sonar type uncomment only one at a time
+//#define PINGPONG
+#define MAXBOTIX_PWM				// PWM output mode sonar
+
+
 
 // Default PID variables
 //////////////////////////////////////////////////////////////////////////////
